@@ -4,7 +4,7 @@
 
 #include "cache.h"
 
-Cache cache;
+MultilevelCache cache;
 
 /**
  * Function to open the trace file
@@ -32,10 +32,13 @@ int next_line(FILE* trace) {
 }
 
 void init(FILE* config) {
-    int line_size, cache_size, associativity, hit_time, miss_penalty;
-    int line_size2, cache_size2, associativity2, hit_time2, miss_penalty2;
-    fscanf(config, "%d, %d, %d, %d, %d\n", &line_size, &cache_size, &associativity, &hit_time, &miss_penalty);
-    cache.init(line_size, cache_size, associativity, hit_time, miss_penalty);
+    config_t cache_cfg1;
+    fscanf(config, "%d, %d, %d, %d\n", &cache_cfg1.line_size, 
+            &cache_cfg1.cache_size, &cache_cfg1.associativity, &cache_cfg1.hit_time);
+    config_t cache_cfg2;
+    fscanf(config, "%d, %d, %d, %d, %d\n", &cache_cfg2.line_size, 
+            &cache_cfg2.cache_size, &cache_cfg2.associativity, &cache_cfg2.hit_time, &cache_cfg2.miss_penalty);
+    cache.init(cache_cfg1, cache_cfg2);
 }
 
 /**
