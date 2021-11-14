@@ -127,13 +127,15 @@ int Cache::try_access(addr_t physical_addr, int access_type) {
     for (int way = 0; way < ways; way++) {
         if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
             hit = 1;
-            stats.hits++;
             if (access_type == MEMWRITE || access_type == MARKDIRTY) {
                 cache[index].blocks[way].dirty = 1;
             }
             // This prevents the MRU of L2 cache from being updated when a dirty block of L1 is evicted 
             // and that block is marked dirty in L2
-            if (access_type != MARKDIRTY) cache[index].stack->set_mru(way);
+            if (access_type != MARKDIRTY) {
+                cache[index].stack->set_mru(way);
+                stats.hits++;
+            }
             break;
         }
     }
@@ -167,18 +169,18 @@ add_result_t Cache::add_block(addr_t physical_addr, int access_type) {
         accessed_way = cache[index].stack->get_lru();
         // send invalidate signal if evicted from L2 cache
         if (cache_type == L2) {
-            if (cache[index].blocks[accessed_way].dirty) {
-                result.evicted_dirty_in_l2 = 1;
-            } 
             result.evicted = 1;
             result.evicted_addr =   (cache[index].blocks[accessed_way].tag 
                                     << (num_index_bits + num_offset_bits))
                                     | (index << num_offset_bits); // address of evicted block
+            if (cache[index].blocks[accessed_way].dirty) {
+                result.evicted_dirty = 1;
+            }
         }
         if (cache_type == L1 && cache[index].blocks[accessed_way].dirty) {
             // if l1 dirty cache block is evicted, update l2
-            stats.traffic++;
-            try_access(physical_addr, MARKDIRTY);
+            result.evicted = 1;
+            result.evicted_dirty = 1;
         }
     }
 
@@ -290,8 +292,11 @@ void MultilevelCache::access(addr_t physical_addr, int access_type) {
         if (l2_hit) { // if found in l2, bring to l1
             global_stats.hits++;
             l1_cache->get_stats()->traffic++;
-            global_stats.traffic++;
-            l1_cache->add_block(physical_addr, access_type);
+            add_result_t result = l1_cache->add_block(physical_addr, access_type);
+            if (result.evicted_dirty) {
+                l1_cache->get_stats()->traffic++;
+                l2_cache->try_access(physical_addr, MARKDIRTY);
+            }
         } else {
             global_stats.misses++;
             if (access_type == IFETCH) global_stats.instr_misses++;
@@ -299,15 +304,18 @@ void MultilevelCache::access(addr_t physical_addr, int access_type) {
             // l1 and l2 miss, so need to put data in both l1 and l2
             add_result_t result = l2_cache->add_block(physical_addr, MEMREAD); // in case of write, only l1 cache should be written
             if (result.evicted) { // block was evicted from L2
-                global_stats.traffic++;
                 l1_cache->get_stats()->traffic++;
                 int invalidated_dirty_in_l1 = l1_cache->invalidate(result.evicted_addr);
                 // write back occurs if:
-                if (result.evicted_dirty_in_l2 || invalidated_dirty_in_l1) {
+                if (result.evicted_dirty || invalidated_dirty_in_l1) {
                     global_stats.writebacks++;
                 }
             }
-            l1_cache->add_block(physical_addr, access_type);
+            result = l1_cache->add_block(physical_addr, access_type);
+            if (result.evicted_dirty) {
+                l1_cache->get_stats()->traffic++;
+                l2_cache->try_access(physical_addr, MARKDIRTY);
+            }
         }
     }
 }
@@ -377,6 +385,7 @@ void MultilevelCache::print_stats() {
 
 stats_t* MultilevelCache::get_stats() {
     global_stats.miss_rate = (1.0 * global_stats.misses)/global_stats.accesses;
+    global_stats.traffic = l1_instr_cache->get_stats()->traffic + l1_data_cache->get_stats()->traffic;
     double l1_miss_rate = (1.0 * l1_data_cache->get_stats()->misses + l1_instr_cache->get_stats()->misses)/ // total L1 misses
                         (l1_data_cache->get_stats()->misses + l1_instr_cache->get_stats()->misses + l1_data_cache->get_stats()->hits + l1_instr_cache->get_stats()->hits); // total L1 accesses
     double l2_miss_rate = (1.0 * l2_cache->get_stats()->misses)/(l2_cache->get_stats()->misses + l2_cache->get_stats()->hits);

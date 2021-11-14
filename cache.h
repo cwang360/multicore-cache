@@ -66,7 +66,7 @@ typedef struct config_t {
 typedef struct add_result_t {
 	int evicted;
 	addr_t evicted_addr;
-	int evicted_dirty_in_l2;
+	int evicted_dirty;
 } add_result_t;
 
 class Cache {
