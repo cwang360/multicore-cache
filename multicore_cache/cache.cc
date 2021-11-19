@@ -6,6 +6,7 @@
 #include "cache.h"
 
 void Cache::init(config_t config) {
+    printf("init cache\n");
     stats.hits = 0;
     stats.misses = 0;
     stats.accesses = 0;
