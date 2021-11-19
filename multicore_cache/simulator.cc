@@ -23,15 +23,16 @@ FILE *open_file(const char *filename) {
 int next_line(FILE* trace) {
     if (feof(trace) || ferror(trace)) return 0;
     else {
+        int core;
         int t;
         addr_t address;
         data_t data;
-        fscanf(trace, "%d %llx %llx\n", &t, &address, &data);
+        fscanf(trace, "%u %d %llx %llx\n", &core, &t, &address, &data);
         data_t accessed_data = cache.access(address, t, data);
         if (t == MEMWRITE) {
-            printf("w %lld %lld\n", data, accessed_data);
+            printf("w 0x%.6llx <= 0x%.6llx expected: 0x%.6llx\n", address, accessed_data, data);
         } else if (t == MEMREAD) {
-            printf("r %lld %lld\n", data, accessed_data);
+            printf("r 0x%.6llx => 0x%.6llx expected: 0x%.6llx\n", address, accessed_data, data);
         }
     }
     return 1;

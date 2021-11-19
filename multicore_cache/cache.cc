@@ -111,10 +111,10 @@ data_t Cache::access(addr_t physical_addr, int access_type, data_t data) {
         cache[index].blocks[accessed_way].tag = tag;
         if (access_type == MEMWRITE) {
             cache[index].blocks[accessed_way].dirty = 1;
-            cache[index].blocks[accessed_way].data = data;
         } else {
             cache[index].blocks[accessed_way].dirty = 0;
         }
+        cache[index].blocks[accessed_way].data = data;
         cache_data = cache[index].blocks[accessed_way].data;
         // printf("access %lld %lld\n", data, cache[index].blocks[accessed_way].data);
 
