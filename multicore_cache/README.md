@@ -18,14 +18,18 @@ Simulation for cache coherence protocols
     - a separate trace for each core?
     - time, access type, address
     - what if multiple cores request at same time? Need mutex lock for writes; assume this is already handled by OS...so one request at at time
+- Currently supports byte-sized read and writes. Default value (if not written to before) is 0.
 ## Compile and run simulation
 ```
-g++ lrustack.cc cache.cc simulator.cc -o simulator
+g++ lrustack.cc cache.cc system.cc simulator.cc -o simulator
 ```
 ```
 ./simulator <config> <trace>
 ```
 ## Config file format
 ```
+<number of cores>, <coherence protocol>
 <line size>, <cache size>, <associativity>, <hit time>, <miss penalty>
 ```
+Coherence protocols:
+- MSI = 1

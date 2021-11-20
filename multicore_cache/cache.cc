@@ -47,6 +47,7 @@ void Cache::init(config_t config) {
             cache[i].blocks[j].tag = 0;
             cache[i].blocks[j].dirty = 0;
             cache[i].blocks[j].valid = 0;
+            cache[i].blocks[j].data = (int8_t*) malloc(block_size * sizeof(int8_t));
         }
     }
 }
@@ -54,17 +55,20 @@ void Cache::init(config_t config) {
 Cache::~Cache() {
     for (int i = 0; i < (cache_size / block_size / ways); i++) {
         delete cache[i].stack;
+        for (int j = 0; j < ways; j++) {
+            free(cache[i].blocks[j].data);
+        }
         free(cache[i].blocks);
     }
     free(cache);
 }
 
-data_t Cache::access(addr_t physical_addr, int access_type, data_t data) {
+int8_t Cache::access(addr_t physical_addr, int access_type, int8_t data) {
 
     // Use bit manipulation to extract tag, index, offset from physical_addr
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
     int index = (physical_addr >> num_offset_bits) & ((1 << num_index_bits) - 1);
-    // int offset = physical_addr & ((1 << num_offset_bits) - 1);
+    int offset = physical_addr & ((1 << num_offset_bits) - 1);
 
     // increment accesses statistic
     stats.accesses++;
@@ -73,7 +77,7 @@ data_t Cache::access(addr_t physical_addr, int access_type, data_t data) {
 
     // variable for way within set where the data is accessed/stored
     int accessed_way = -1;
-    data_t cache_data;
+    int8_t cache_data;
 
     // Check if tag exists in set
     int empty_way = -1;
@@ -83,10 +87,10 @@ data_t Cache::access(addr_t physical_addr, int access_type, data_t data) {
             accessed_way = way;
             if (access_type == MEMWRITE) {
                 cache[index].blocks[way].dirty = 1;
-                cache[index].blocks[way].data = data;
-                // printf("access %lld %lld\n", data, cache[index].blocks[way].data);
+                cache[index].blocks[way].data[offset] = data;
             } 
-            cache_data = cache[index].blocks[way].data;
+            // printf("access %d %d %llx\n", index, way, cache[index].blocks[way].data);
+            cache_data = cache[index].blocks[way].data[offset];
             break;
         }
         if (!cache[index].blocks[way].valid) {
@@ -110,14 +114,17 @@ data_t Cache::access(addr_t physical_addr, int access_type, data_t data) {
         // Update metadata
         cache[index].blocks[accessed_way].valid = 1;
         cache[index].blocks[accessed_way].tag = tag;
+        for (int i = 0; i < block_size; i++) {
+            cache[index].blocks[accessed_way].data[i] = 0;
+        }
         if (access_type == MEMWRITE) {
             cache[index].blocks[accessed_way].dirty = 1;
+            cache[index].blocks[accessed_way].data[offset] = data;
         } else {
             cache[index].blocks[accessed_way].dirty = 0;
-        }
-        cache[index].blocks[accessed_way].data = data;
-        cache_data = cache[index].blocks[accessed_way].data;
-        // printf("access %lld %lld\n", data, cache[index].blocks[accessed_way].data);
+        }        
+        cache_data = cache[index].blocks[accessed_way].data[offset];
+        // printf("access %d %d %llx\n", index, accessed_way, cache[index].blocks[accessed_way].data);
 
     }
 

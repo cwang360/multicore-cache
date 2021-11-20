@@ -21,18 +21,13 @@ typedef struct cache_block_t {
 	int tag;
 	int valid;
 	int dirty;
-    data_t data;
+    int8_t* data;
 } cache_block_t;
 
-/**
- * Struct for a cache set. Feel free to change any of this if you want. 
- */
 typedef struct cache_set_t {
 	int size;				// Number of blocks in this cache set
 	LruStack* stack;		    // LRU Stack 
-	cache_block_t* blocks;	// Array of cache block structs. You will need to
-							// 	dynamically allocate based on number of blocks
-							//	per set. 
+	cache_block_t* blocks;	// Array of cache block structs. 
 } cache_set_t;
 
 
@@ -90,7 +85,7 @@ class Cache {
         void init(config_t config);
         ~Cache();
         
-        data_t access(addr_t physical_addr, int access_type, data_t data);
+        int8_t access(addr_t physical_addr, int access_type, int8_t data);
 
         int try_access(addr_t physical_addr, int access_type);
         add_result_t add_block(addr_t physical_addr, int access_type);

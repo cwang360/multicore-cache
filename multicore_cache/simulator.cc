@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <inttypes.h>
 
 #include "system.h"
 
@@ -26,13 +27,18 @@ int next_line(FILE* trace) {
         int core;
         int t;
         addr_t address;
-        data_t data;
-        fscanf(trace, "%u %d %llx %llx\n", &core, &t, &address, &data);
-        data_t accessed_data = sys.access(core, address, t, data);
+        int8_t data;
+        fscanf(trace, "%u %d %llx %" SCNx8 "\n", &core, &t, &address, &data);
+        int8_t accessed_data = sys.access(core, address, t, data);
         if (t == MEMWRITE) {
-            printf("w 0x%.6llx <= 0x%.6llx expected: 0x%.6llx\n", address, accessed_data, data);
+            printf("core%u w 0x%.6llx <= 0x%.2hhx expected: 0x%.2hhx", core, address, accessed_data, data);
         } else if (t == MEMREAD) {
-            printf("r 0x%.6llx => 0x%.6llx expected: 0x%.6llx\n", address, accessed_data, data);
+            printf("core%u r 0x%.6llx => 0x%.2hhx expected: 0x%.2hhx", core, address, accessed_data, data);
+        }
+        if (accessed_data != data) {
+            printf(" ERROR: MISMATCH\n");
+        } else {
+            printf("\n");
         }
     }
     return 1;
@@ -66,7 +72,15 @@ int main(int argc, char **argv) {
     }
     
     input = open_file(argv[2]);
+    if (!input) {
+        fprintf(stderr, "Input file %s could not be opened\n", argv[2]);
+        return 1;
+    }
     config = open_file(argv[1]);
+    if (!config) {
+        fprintf(stderr, "Config file %s could not be opened\n", argv[1]);
+        return 1;
+    }
 
     init(config);
 
