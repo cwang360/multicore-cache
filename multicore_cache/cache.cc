@@ -47,7 +47,7 @@ void Cache::init(config_t config) {
             cache[i].blocks[j].tag = 0;
             cache[i].blocks[j].dirty = 0;
             cache[i].blocks[j].valid = 0;
-            cache[i].blocks[j].data = (int8_t*) malloc(block_size * sizeof(int8_t));
+            cache[i].blocks[j].data = (uint8_t*) malloc(block_size * sizeof(uint8_t));
         }
     }
 }
@@ -63,7 +63,7 @@ Cache::~Cache() {
     free(cache);
 }
 
-int8_t Cache::access(addr_t physical_addr, int access_type, int8_t data) {
+uint8_t Cache::access(addr_t physical_addr, int access_type, uint8_t data) {
 
     // Use bit manipulation to extract tag, index, offset from physical_addr
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
@@ -77,7 +77,7 @@ int8_t Cache::access(addr_t physical_addr, int access_type, int8_t data) {
 
     // variable for way within set where the data is accessed/stored
     int accessed_way = -1;
-    int8_t cache_data;
+    uint8_t cache_data;
 
     // Check if tag exists in set
     int empty_way = -1;

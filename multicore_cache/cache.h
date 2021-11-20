@@ -2,16 +2,8 @@
 #define __CACHE_H
 
 #include "lrustack.h"
+#include "global_types.h"
 
-typedef unsigned long long addr_t;		// Data type to hold addresses
-typedef unsigned long long counter_t;	// Data type to hold cache statistic variables
-typedef long long data_t;
-
-// Access types
-#define MEMREAD 0
-#define MEMWRITE 1
-#define IFETCH 2
-#define MARKDIRTY 3
 
 // cache types
 #define L1 0
@@ -21,7 +13,7 @@ typedef struct cache_block_t {
 	int tag;
 	int valid;
 	int dirty;
-    int8_t* data;
+    uint8_t* data;
 } cache_block_t;
 
 typedef struct cache_set_t {
@@ -85,7 +77,7 @@ class Cache {
         void init(config_t config);
         ~Cache();
         
-        int8_t access(addr_t physical_addr, int access_type, int8_t data);
+        uint8_t access(addr_t physical_addr, int access_type, uint8_t data);
 
         int try_access(addr_t physical_addr, int access_type);
         add_result_t add_block(addr_t physical_addr, int access_type);

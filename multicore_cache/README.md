@@ -30,6 +30,19 @@ g++ lrustack.cc cache.cc system.cc simulator.cc -o simulator
 ```
 <number of cores>, <coherence protocol>
 <line size>, <cache size>, <associativity>, <hit time>, <miss penalty>
+<shared memory size>
 ```
-Coherence protocols:
+All sizes are in bytes.
+### Coherence protocols:
 - MSI = 1
+## Trace file format
+```
+<core num> <access type> <address> <data>
+```
+### Access type:
+- data read = 0
+- data write = 1
+- instr fetch = 2
+### Data:
+- Expected value for a read
+- Value to be stored for a write
