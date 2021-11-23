@@ -58,6 +58,11 @@ typedef struct add_result_t {
 	int evicted_dirty;
 } add_result_t;
 
+typedef struct access_result_t {
+    int hit;
+    uint8_t data;
+} access_result_t;
+
 class Cache {
     private:
         stats_t stats;
@@ -77,10 +82,11 @@ class Cache {
         void init(config_t config);
         ~Cache();
         
-        uint8_t access(addr_t physical_addr, int access_type, uint8_t data);
+        access_result_t user_access(addr_t physical_addr, access_t access_type, uint8_t data);
+        void system_access(addr_t physical_addr, access_t access_type, uint8_t* bus);
 
-        int try_access(addr_t physical_addr, int access_type);
-        add_result_t add_block(addr_t physical_addr, int access_type);
+        int try_access(addr_t physical_addr, access_t access_type);
+        add_result_t add_block(addr_t physical_addr, access_t access_type);
         int invalidate(addr_t evicted_addr);
 
         void print_stats();
@@ -97,7 +103,7 @@ class MultilevelCache {
         void init(config_t l1_config, config_t l2_config);
         ~MultilevelCache();
 
-        void access(addr_t physical_addr, int access_type);
+        void access(addr_t physical_addr, access_t access_type);
 
         void print_stats();
         stats_t* get_stats();

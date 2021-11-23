@@ -3,10 +3,15 @@
 
 
 // Access types
-#define MEMREAD 0
-#define MEMWRITE 1
-#define IFETCH 2
-#define MARKDIRTY 3
+typedef enum {
+    MEMREAD = 0,
+    MEMWRITE = 1,
+    IFETCH = 2,
+    SEND,       // Data copied to bus
+    STORE,      // Data copied from bus, stored to mem or cache
+    MARKDIRTY
+} access_t;
+
 
 
 typedef unsigned long long addr_t;		// Data type to hold addresses

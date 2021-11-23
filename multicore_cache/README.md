@@ -1,5 +1,5 @@
 # multicore-cache
-Simulation for cache coherence protocols
+Trace-driven simulation for cache coherence protocols
 1. Snoopy (bus-based) coherence protocols
     - MSI
     - MESI
@@ -19,9 +19,10 @@ Simulation for cache coherence protocols
     - time, access type, address
     - what if multiple cores request at same time? Need mutex lock for writes; assume this is already handled by OS...so one request at at time
 - Currently supports byte-sized read and writes. Default value (if not written to before) is 0.
+- Deal with bus widths smaller than line size
 ## Compile and run simulation
 ```
-g++ lrustack.cc cache.cc system.cc simulator.cc -o simulator
+g++ lrustack.cc cache.cc memory.cc system.cc simulator.cc -o simulator
 ```
 ```
 ./simulator <config> <trace>
@@ -30,7 +31,7 @@ g++ lrustack.cc cache.cc system.cc simulator.cc -o simulator
 ```
 <number of cores>, <coherence protocol>
 <line size>, <cache size>, <associativity>, <hit time>, <miss penalty>
-<shared memory size>
+<shared memory size>, <bus width>
 ```
 All sizes are in bytes.
 ### Coherence protocols:

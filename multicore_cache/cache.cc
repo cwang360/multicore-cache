@@ -6,7 +6,6 @@
 #include "cache.h"
 
 void Cache::init(config_t config) {
-    printf("init cache\n");
     stats.hits = 0;
     stats.misses = 0;
     stats.accesses = 0;
@@ -63,7 +62,7 @@ Cache::~Cache() {
     free(cache);
 }
 
-uint8_t Cache::access(addr_t physical_addr, int access_type, uint8_t data) {
+access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, uint8_t data) {
 
     // Use bit manipulation to extract tag, index, offset from physical_addr
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
@@ -77,12 +76,14 @@ uint8_t Cache::access(addr_t physical_addr, int access_type, uint8_t data) {
 
     // variable for way within set where the data is accessed/stored
     int accessed_way = -1;
-    uint8_t cache_data;
+
+    access_result_t result = {0, 0};
 
     // Check if tag exists in set
     int empty_way = -1;
     for (int way = 0; way < ways; way++) {
         if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
+            result.hit = 1;
             stats.hits++;
             accessed_way = way;
             if (access_type == MEMWRITE) {
@@ -90,7 +91,7 @@ uint8_t Cache::access(addr_t physical_addr, int access_type, uint8_t data) {
                 cache[index].blocks[way].data[offset] = data;
             } 
             // printf("access %d %d %llx\n", index, way, cache[index].blocks[way].data);
-            cache_data = cache[index].blocks[way].data[offset];
+            result.data = cache[index].blocks[way].data[offset];
             break;
         }
         if (!cache[index].blocks[way].valid) {
@@ -123,17 +124,60 @@ uint8_t Cache::access(addr_t physical_addr, int access_type, uint8_t data) {
         } else {
             cache[index].blocks[accessed_way].dirty = 0;
         }        
-        cache_data = cache[index].blocks[accessed_way].data[offset];
+        result.data = cache[index].blocks[accessed_way].data[offset];
         // printf("access %d %d %llx\n", index, accessed_way, cache[index].blocks[accessed_way].data);
 
     }
 
     // Update LRU stack
     cache[index].stack->set_mru(accessed_way);
-    return cache_data;
+
+    return result;
 }
 
-int Cache::try_access(addr_t physical_addr, int access_type) {
+void Cache::system_access(addr_t physical_addr, access_t access_type, uint8_t* bus) {
+
+    // Use bit manipulation to extract tag, index, offset from physical_addr
+    int tag = physical_addr >> (num_index_bits + num_offset_bits);
+    int index = (physical_addr >> num_offset_bits) & ((1 << num_index_bits) - 1);
+
+    if (access_type == SEND) {
+        // Find cache block and copy its data to bus
+        for (int way = 0; way < ways; way++) {
+            if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
+                memcpy(bus, cache[index].blocks[way].data, sizeof(uint8_t) * block_size);
+            } 
+        }
+        return; // Not found; don't do anything
+    }
+
+    if (access_type == STORE) {
+        // Check if there is an empty way and if so, use first one
+        int accessed_way = -1;
+        for (int way = 0; way < ways; way++) {
+            if (!cache[index].blocks[way].valid) {
+                accessed_way = way;
+                break;
+            }
+        }
+        // No empty way. Use LRU
+        if (accessed_way < 0) {
+            accessed_way = cache[index].stack->get_lru();
+            // write back old data in block if dirty
+            if (cache[index].blocks[accessed_way].dirty) {
+                stats.writebacks++;
+            }
+        }
+        memcpy(cache[index].blocks[accessed_way].data, bus, sizeof(uint8_t) * block_size);
+        cache[index].blocks[accessed_way].valid = 1;
+        cache[index].blocks[accessed_way].dirty = 0;
+        cache[index].blocks[accessed_way].tag = tag;
+        // // Update LRU stack?
+        // cache[index].stack->set_mru(accessed_way);
+    }
+}
+
+int Cache::try_access(addr_t physical_addr, access_t access_type) {
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
     int index = (physical_addr >> num_offset_bits) & ((1 << num_index_bits) - 1);
     // variable for way within set where the data is accessed/stored
@@ -163,7 +207,7 @@ int Cache::try_access(addr_t physical_addr, int access_type) {
     return hit;
 }
 
-add_result_t Cache::add_block(addr_t physical_addr, int access_type) {
+add_result_t Cache::add_block(addr_t physical_addr, access_t access_type) {
         // Use bit manipulation to extract tag, index, offset from physical_addr
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
     int index = (physical_addr >> num_offset_bits) & ((1 << num_index_bits) - 1);
@@ -291,7 +335,7 @@ void MultilevelCache::init(config_t l1_config, config_t l2_config) {
     global_stats.instr_misses = 0;
 }
 
-void MultilevelCache::access(addr_t physical_addr, int access_type) {
+void MultilevelCache::access(addr_t physical_addr, access_t access_type) {
     // determine which l1 cache to look in/modify
     Cache* l1_cache = (access_type == IFETCH ? l1_instr_cache : l1_data_cache);
 

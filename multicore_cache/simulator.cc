@@ -25,7 +25,7 @@ int next_line(FILE* trace) {
     if (feof(trace) || ferror(trace)) return 0;
     else {
         int core;
-        int t;
+        access_t t;
         addr_t address;
         uint8_t data;
         fscanf(trace, "%u %d %llx %" SCNx8 "\n", &core, &t, &address, &data);
@@ -46,15 +46,16 @@ int next_line(FILE* trace) {
 
 void init(FILE* config) {
     int num_caches;
-    int protocol;
+    protocol_t protocol;
     config_t cache_cfg1;
     cache_cfg1.cache_type = L1;
     int mem_size;
+    int bus_width;
     fscanf(config, "%d, %d\n", &num_caches, &protocol);
     fscanf(config, "%d, %d, %d, %d, %d\n", &cache_cfg1.line_size, 
             &cache_cfg1.cache_size, &cache_cfg1.associativity, &cache_cfg1.hit_time, &cache_cfg1.miss_penalty);
-    fscanf(config, "%d", &mem_size);
-    sys.init(num_caches, protocol, cache_cfg1, mem_size);
+    fscanf(config, "%d, %d", &mem_size, &bus_width);
+    sys.init(num_caches, protocol, cache_cfg1, mem_size, bus_width);
 }
 
 /**
