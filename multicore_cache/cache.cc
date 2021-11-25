@@ -5,7 +5,9 @@
 
 #include "cache.h"
 
-void Cache::init(config_t config) {
+void Cache::init(config_t config, bus_t* bus) {
+    this->bus = bus;
+
     stats.hits = 0;
     stats.misses = 0;
     stats.accesses = 0;
@@ -77,7 +79,7 @@ access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, u
     // variable for way within set where the data is accessed/stored
     int accessed_way = -1;
 
-    access_result_t result = {0, 0, NONE};
+    access_result_t result = {0, 0};
 
     // Check if tag exists in set
     int empty_way = -1;
@@ -110,7 +112,7 @@ access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, u
             // write back data being replaced if it is dirty
             if (cache[index].blocks[accessed_way].dirty) {
                 stats.writebacks++;
-                result.message = WRITEBACK;
+                bus->message = WRITEBACK;
             }
         }
         // Update metadata
@@ -136,7 +138,7 @@ access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, u
     return result;
 }
 
-void Cache::system_access(addr_t physical_addr, access_t access_type, uint8_t* bus) {
+void Cache::system_access(addr_t physical_addr, access_t access_type) {
 
     // Use bit manipulation to extract tag, index, offset from physical_addr
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
@@ -147,7 +149,7 @@ void Cache::system_access(addr_t physical_addr, access_t access_type, uint8_t* b
         for (int way = 0; way < ways; way++) {
             if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
                 cache[index].blocks[way].dirty = 0;
-                memcpy(bus, cache[index].blocks[way].data, sizeof(uint8_t) * block_size);
+                memcpy(bus->data, cache[index].blocks[way].data, sizeof(uint8_t) * block_size);
             } 
         }
         return; // Not found; don't do anything
@@ -170,7 +172,7 @@ void Cache::system_access(addr_t physical_addr, access_t access_type, uint8_t* b
                 stats.writebacks++;
             }
         }
-        memcpy(cache[index].blocks[accessed_way].data, bus, sizeof(uint8_t) * block_size);
+        memcpy(cache[index].blocks[accessed_way].data, bus->data, sizeof(uint8_t) * block_size);
         cache[index].blocks[accessed_way].valid = 1;
         cache[index].blocks[accessed_way].dirty = 0;
         cache[index].blocks[accessed_way].tag = tag;
@@ -188,7 +190,7 @@ access_result_t Cache::try_access(addr_t physical_addr, access_t access_type, ui
     int index = (physical_addr >> num_offset_bits) & ((1 << num_index_bits) - 1);
     int offset = physical_addr & ((1 << num_offset_bits) - 1);
 
-    access_result_t result = {0, 0, NONE};
+    access_result_t result = {0, 0};
 
     // Check if tag exists in set
     int empty_way = -1;
@@ -198,7 +200,7 @@ access_result_t Cache::try_access(addr_t physical_addr, access_t access_type, ui
             result.hit = 1;
             if (access_type == MEMWRITE) {
                 if (!cache[index].blocks[way].dirty) {
-                    result.message = INVALIDATE;
+                    bus->message = INVALIDATE;
                 }
                 cache[index].blocks[way].dirty = 1;
                 cache[index].blocks[way].data[offset] = data;
@@ -213,9 +215,9 @@ access_result_t Cache::try_access(addr_t physical_addr, access_t access_type, ui
         if (access_type == MEMWRITE || access_type == MEMREAD) stats.data_misses++;
 
         if (access_type == MEMWRITE) {
-            result.message = WRITE_MISS;
+            bus->message = WRITE_MISS;
         } else if (access_type == MEMREAD || access_type == IFETCH) {
-            result.message = READ_MISS;
+            bus->message = READ_MISS;
         }
     }
 

@@ -14,7 +14,7 @@ class System {
     private:
         Cache* caches;      // Array of caches, one for each core
         Memory* shared_mem; // Main memory, shared by all cores
-        uint8_t* bus;       // Pointer to beginning of space allocated to hold data on the system bus
+        bus_t bus;
         int bus_width;      // Width of system bus; amount of data that can be transferred per usage of bus
         int num_caches;     // Number of caches/cores
         int protocol;       // Cache coherence protocol. See the definition for protocol_t.

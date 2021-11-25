@@ -90,6 +90,7 @@ int main(int argc, char **argv) {
     while (next_line(input));
 
     sys.print_stats();
+    printf("Simulation Completed\n");
 
     fclose(input);
     fclose(config);

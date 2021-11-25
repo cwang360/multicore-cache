@@ -20,7 +20,14 @@ typedef enum {
     INVALIDATE = 3,
     DATA = 4, 
     WRITEBACK = 5
-} bus_message_t;
+} message_t;
+
+// Bus struct
+typedef struct bus_t {
+    message_t message;
+    uint8_t* data;
+    int source;
+} bus_t;
 
 typedef unsigned long long addr_t;		// Data type to hold addresses
 typedef unsigned long long counter_t;	// Data type to hold cache statistic variables

@@ -61,7 +61,6 @@ typedef struct add_result_t {
 typedef struct access_result_t {
     int hit;
     uint8_t data;
-    bus_message_t message;
 } access_result_t;
 
 class Cache {
@@ -78,13 +77,14 @@ class Cache {
         int miss_penalty;
         cache_set_t* cache;		// Array of cache sets representing the cache.
         int cache_type;
+        bus_t* bus;
     public:
         // Cache(int _block_size, int _cache_size, int _ways, int _hit_time, int _miss_penalty);
-        void init(config_t config);
+        void init(config_t config, bus_t* bus);
         ~Cache();
         
         access_result_t user_access(addr_t physical_addr, access_t access_type, uint8_t data);
-        void system_access(addr_t physical_addr, access_t access_type, uint8_t* bus);
+        void system_access(addr_t physical_addr, access_t access_type);
 
         access_result_t try_access(addr_t physical_addr, access_t access_type, uint8_t data);
         add_result_t add_block(addr_t physical_addr, access_t access_type);

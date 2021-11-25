@@ -10,9 +10,10 @@ class Memory {
         uint8_t* mem;
         int size;
         int block_size;
+        bus_t* bus;
     public:
-        void init(int size, int block_size);
-        void access(addr_t physical_addr, int access_type, uint8_t* bus);
+        void init(int size, int block_size, bus_t* bus);
+        void access(addr_t physical_addr, int access_type);
         ~Memory();
 };
 

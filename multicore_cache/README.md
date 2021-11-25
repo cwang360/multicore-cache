@@ -2,6 +2,7 @@
 Trace-driven simulation for cache coherence protocols
 1. Snoopy (bus-based) coherence protocols
     - MSI
+    ![MSI state diagram](diagrams/MSI.png)
     - MESI
     - MOESI
     - etc.
@@ -17,7 +18,7 @@ Trace-driven simulation for cache coherence protocols
 - trace file format? line by line wouldn't take into account simultaneous access
     - a separate trace for each core?
     - time, access type, address
-    - what if multiple cores request at same time? Need mutex lock for writes; assume this is already handled by OS...so one request at at time
+
 - Currently supports byte-sized read and writes. Default value (if not written to before) is 0.
 - Deal with bus widths smaller than line size
 ## Compile and run simulation
