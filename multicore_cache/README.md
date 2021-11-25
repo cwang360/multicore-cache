@@ -32,7 +32,7 @@ g++ lrustack.cc cache.cc memory.cc system.cc simulator.cc -o simulator
 ```
 <number of cores>, <coherence protocol>
 <line size>, <cache size>, <associativity>, <hit time>, <miss penalty>
-<shared memory size>, <bus width>
+<shared memory size>, <data bus width>
 ```
 All sizes are in bytes.
 ### Coherence protocols:
