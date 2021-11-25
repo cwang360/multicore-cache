@@ -64,7 +64,7 @@ Cache::~Cache() {
     free(cache);
 }
 
-access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, uint8_t data) {
+uint8_t Cache::user_access(addr_t physical_addr, access_t access_type, uint8_t data) {
 
     // Use bit manipulation to extract tag, index, offset from physical_addr
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
@@ -79,13 +79,14 @@ access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, u
     // variable for way within set where the data is accessed/stored
     int accessed_way = -1;
 
-    access_result_t result = {0, 0};
+    uint8_t result;
+    int hit = 0;
 
     // Check if tag exists in set
     int empty_way = -1;
     for (int way = 0; way < ways; way++) {
         if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
-            result.hit = 1;
+            hit = 1;
             // stats.hits++;
             accessed_way = way;
             if (access_type == MEMWRITE) {
@@ -93,7 +94,7 @@ access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, u
                 cache[index].blocks[way].data[offset] = data;
             } 
             // printf("access %d %d %llx\n", index, way, cache[index].blocks[way].data);
-            result.data = cache[index].blocks[way].data[offset];
+            result = cache[index].blocks[way].data[offset];
             break;
         }
         if (!cache[index].blocks[way].valid) {
@@ -113,6 +114,10 @@ access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, u
             if (cache[index].blocks[accessed_way].dirty) {
                 stats.writebacks++;
                 bus->message = WRITEBACK;
+                bus->addr = (cache[index].blocks[accessed_way].tag 
+                            << (num_index_bits + num_offset_bits))
+                            | (index << num_offset_bits); // address of evicted block
+                memcpy(bus->data, cache[index].blocks[accessed_way].data, sizeof(uint8_t) * block_size);
             }
         }
         // Update metadata
@@ -127,7 +132,7 @@ access_result_t Cache::user_access(addr_t physical_addr, access_t access_type, u
         } else {
             cache[index].blocks[accessed_way].dirty = 0;
         }        
-        result.data = cache[index].blocks[accessed_way].data[offset];
+        result = cache[index].blocks[accessed_way].data[offset];
         // printf("access %d %d %llx\n", index, accessed_way, cache[index].blocks[accessed_way].data);
 
     }
@@ -181,7 +186,7 @@ void Cache::system_access(addr_t physical_addr, access_t access_type) {
     }
 }
 
-access_result_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t data) {
+uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t data) {
     stats.accesses++;
     if (access_type == IFETCH) stats.instr_accesses++;
     if (access_type == MEMWRITE || access_type == MEMREAD) stats.data_accesses++;
@@ -190,14 +195,15 @@ access_result_t Cache::try_access(addr_t physical_addr, access_t access_type, ui
     int index = (physical_addr >> num_offset_bits) & ((1 << num_index_bits) - 1);
     int offset = physical_addr & ((1 << num_offset_bits) - 1);
 
-    access_result_t result = {0, 0};
+    uint8_t result;
+    int hit = 0;
 
     // Check if tag exists in set
     int empty_way = -1;
     for (int way = 0; way < ways; way++) {
         if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
             stats.hits++;
-            result.hit = 1;
+            hit = 1;
             if (access_type == MEMWRITE) {
                 if (!cache[index].blocks[way].dirty) {
                     bus->message = INVALIDATE;
@@ -205,11 +211,11 @@ access_result_t Cache::try_access(addr_t physical_addr, access_t access_type, ui
                 cache[index].blocks[way].dirty = 1;
                 cache[index].blocks[way].data[offset] = data;
             }
-            result.data = cache[index].blocks[way].data[offset];
+            result = cache[index].blocks[way].data[offset];
             break;
         }
     }
-    if (!result.hit) {
+    if (!hit) {
         stats.misses++;
         if (access_type == IFETCH) stats.instr_misses++;
         if (access_type == MEMWRITE || access_type == MEMREAD) stats.data_misses++;

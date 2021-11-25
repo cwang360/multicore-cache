@@ -1,6 +1,9 @@
 #ifndef __GLOBAL_TYPES_H
 #define __GLOBAL_TYPES_H
 
+typedef unsigned long long addr_t;		// Data type to hold addresses
+typedef unsigned long long counter_t;	// Data type to hold cache statistic variables
+typedef long long data_t;
 
 // Access types
 typedef enum {
@@ -25,12 +28,9 @@ typedef enum {
 // Bus struct
 typedef struct bus_t {
     message_t message;
+    addr_t addr; // address for a DATA request, or for WRITEBACK
     uint8_t* data;
     int source;
 } bus_t;
-
-typedef unsigned long long addr_t;		// Data type to hold addresses
-typedef unsigned long long counter_t;	// Data type to hold cache statistic variables
-typedef long long data_t;
 
 #endif

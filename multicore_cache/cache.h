@@ -83,10 +83,10 @@ class Cache {
         void init(config_t config, bus_t* bus);
         ~Cache();
         
-        access_result_t user_access(addr_t physical_addr, access_t access_type, uint8_t data);
+        uint8_t user_access(addr_t physical_addr, access_t access_type, uint8_t data);
         void system_access(addr_t physical_addr, access_t access_type);
 
-        access_result_t try_access(addr_t physical_addr, access_t access_type, uint8_t data);
+        uint8_t try_access(addr_t physical_addr, access_t access_type, uint8_t data);
         add_result_t add_block(addr_t physical_addr, access_t access_type);
         int invalidate(addr_t evicted_addr);
         int check_dirty(addr_t physical_addr);

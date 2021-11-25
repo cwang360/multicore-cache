@@ -23,18 +23,11 @@ void System::init(int num_caches, protocol_t protocol, config_t cache_config, in
 }
 
 uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uint8_t data){
-    access_result_t result = caches[core].try_access(physical_addr, access_type, data);
+    uint8_t result_data = caches[core].try_access(physical_addr, access_type, data);
     // std::cout << result.message << "\n";
     message_t message = bus.message;
+    bus.message = NONE;
 
-    if (message == INVALIDATE) {
-        // invalidate copies of the data in other caches
-        for (int i = 0; i < num_caches; i++) {
-            if (i != core) caches[i].invalidate(physical_addr);
-        }
-    }
-
-    if (result.hit) return result.data;
     if (message == READ_MISS || message == WRITE_MISS) {
         int dirty_cache = -1;
         // check if other caches have dirty copy
@@ -50,18 +43,20 @@ uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uin
             shared_mem->access(physical_addr, STORE);
         }
         caches[core].system_access(physical_addr, STORE);
-        result = caches[core].user_access(physical_addr, access_type, data);
+        result_data = caches[core].user_access(physical_addr, access_type, data);
         if (bus.message == WRITEBACK) {
-            // handle writeback
+            shared_mem->access(bus.addr, STORE);
         }
+        bus.message = NONE;
     } 
-    if (message == WRITE_MISS) {
+    if (message == WRITE_MISS || message == INVALIDATE) {
         // invalidate others
         for (int i = 0; i < num_caches; i++) {
             if (i != core) caches[i].invalidate(physical_addr);
         }
     }
-    return result.data;
+
+    return result_data;
 }
 
 void System::print_stats(){
