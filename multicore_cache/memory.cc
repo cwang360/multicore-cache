@@ -13,7 +13,7 @@ void Memory::init(int size, int block_size){
 
 void Memory::access(addr_t physical_addr, int access_type, uint8_t* bus){
     uint8_t* mem_block = mem + physical_addr;
-    if (access_type == MEMWRITE) {
+    if (access_type == STORE) {
         memcpy(mem_block, bus, sizeof(uint8_t) * block_size);
     } else {
         memcpy(bus, mem_block, sizeof(uint8_t) * block_size);

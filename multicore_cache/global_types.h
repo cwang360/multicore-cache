@@ -12,7 +12,15 @@ typedef enum {
     MARKDIRTY
 } access_t;
 
-
+// Bus messages
+typedef enum {
+    NONE = 0, 
+    READ_MISS = 1,
+    WRITE_MISS = 2,
+    INVALIDATE = 3,
+    DATA = 4, 
+    WRITEBACK = 5
+} bus_message_t;
 
 typedef unsigned long long addr_t;		// Data type to hold addresses
 typedef unsigned long long counter_t;	// Data type to hold cache statistic variables

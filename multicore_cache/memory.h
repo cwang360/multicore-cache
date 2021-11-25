@@ -12,7 +12,7 @@ class Memory {
         int block_size;
     public:
         void init(int size, int block_size);
-        void access(addr_t physical_addr, int access_type, uint8_t* cache_block);
+        void access(addr_t physical_addr, int access_type, uint8_t* bus);
         ~Memory();
 };
 

@@ -9,15 +9,6 @@ typedef enum {
     MSI = 0
 } protocol_t;
 
-// Bus messages
-typedef enum {
-    READ_MISS,
-    WRITE_MISS,
-    INVALIDATE,
-    DATA
-} bus_message_t;
-
-
 
 class System {
     private:
@@ -29,7 +20,7 @@ class System {
         int protocol;       // Cache coherence protocol. See the definition for protocol_t.
     public:
         void init(int num_caches, protocol_t protocol, config_t cache_config, int mem_size, int bus_width);
-        uint8_t access(int core, addr_t physical_addr, access_t access_type, data_t data);
+        uint8_t access(int core, addr_t physical_addr, access_t access_type, uint8_t data);
         void print_stats();
         ~System();
 };

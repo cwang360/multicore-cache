@@ -61,6 +61,7 @@ typedef struct add_result_t {
 typedef struct access_result_t {
     int hit;
     uint8_t data;
+    bus_message_t message;
 } access_result_t;
 
 class Cache {
@@ -85,25 +86,10 @@ class Cache {
         access_result_t user_access(addr_t physical_addr, access_t access_type, uint8_t data);
         void system_access(addr_t physical_addr, access_t access_type, uint8_t* bus);
 
-        int try_access(addr_t physical_addr, access_t access_type);
+        access_result_t try_access(addr_t physical_addr, access_t access_type, uint8_t data);
         add_result_t add_block(addr_t physical_addr, access_t access_type);
         int invalidate(addr_t evicted_addr);
-
-        void print_stats();
-        stats_t* get_stats();
-};
-
-class MultilevelCache {
-    private:
-        Cache* l1_data_cache;
-        Cache* l1_instr_cache;
-        Cache* l2_cache;
-        stats_t global_stats;
-    public:
-        void init(config_t l1_config, config_t l2_config);
-        ~MultilevelCache();
-
-        void access(addr_t physical_addr, access_t access_type);
+        int check_dirty(addr_t physical_addr);
 
         void print_stats();
         stats_t* get_stats();
