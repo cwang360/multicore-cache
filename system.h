@@ -6,7 +6,8 @@
 
 // Cache coherence protocols
 typedef enum {
-    MSI = 0
+    MSI = 0, 
+    MESI = 1
 } protocol_t;
 
 

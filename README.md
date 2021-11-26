@@ -1,13 +1,15 @@
 # multicore-cache
 Trace-driven simulation for cache coherence protocols
-1. Snoopy (bus-based) coherence protocols
-    - MSI
+### Snoopy (bus-based) coherence protocols
+Blue arrows are transitions driven by local (CPU) input, while red arrows are transitions driven by messages snooped from the bus.  
+- MSI [implemented]  
     ![MSI state diagram](diagrams/MSI.png)
-    - MESI
-    - MOESI
-    - etc.
-    - Hierarchical snooping?
-2. Directory based coherence protocols
+- MESI [in progress]  
+    ![MESI state diagram](diagrams/MESI.png)
+- MOESI
+- etc.
+- Hierarchical snooping?
+### Directory based coherence protocols
 
 ### Considerations:
 - Need to keep track of data as well (done)
@@ -23,11 +25,12 @@ Trace-driven simulation for cache coherence protocols
 - Deal with bus widths smaller than line size
 ## Compile and run simulation
 ```
-g++ lrustack.cc cache.cc memory.cc system.cc simulator.cc -o simulator
+g++ cache.cc memory.cc system.cc simulator.cc -o simulator
 ```
 ```
-./simulator <config> <trace>
+./simulator <config> <space-delimited list of trace files>
 ```
+List one trace file per core.
 ## Config file format
 ```
 <number of cores>, <coherence protocol>
@@ -36,7 +39,8 @@ g++ lrustack.cc cache.cc memory.cc system.cc simulator.cc -o simulator
 ```
 All sizes are in bytes.
 ### Coherence protocols:
-- MSI = 1
+- MSI = 0
+- MESI = 1
 ## Trace file format
 ```
 <core num> <access type> <address> <data>
