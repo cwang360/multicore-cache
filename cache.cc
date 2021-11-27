@@ -153,7 +153,7 @@ void Cache::system_access(addr_t physical_addr, access_t access_type) {
         // Find cache block and copy its data to bus
         for (int way = 0; way < ways; way++) {
             if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
-                cache[index].blocks[way].dirty = 0;
+                cache[index].blocks[way].dirty = 0; // now is shared, and memory will be updated
                 memcpy(bus->data, cache[index].blocks[way].data, sizeof(uint8_t) * block_size);
             } 
         }

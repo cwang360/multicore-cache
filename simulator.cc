@@ -75,40 +75,54 @@ void* cpu_thread_sim(void* trace) {
     pthread_exit(NULL);
 }
 
+void print_usage_and_exit() {
+    std::cout   << "Usage:\n  ./simulator [-s | -p] <config file> <space-separated list of trace files>\n"
+                << "   -s : Single trace file for all cores, single thread for sequential accesses to cores\n"
+                << "   -p : One trace file for each core, cores access in parallel\n";
+    exit(-1);
+}
+
 int main(int argc, char **argv) {
     FILE *config;
     
-    if (argc < 3) {
-        fprintf(stderr, "Usage:\n  %s <config file> <space-separated list of trace files>\n", argv[0]);
-        exit(-1);
+    if (argc < 4) {
+        print_usage_and_exit();
     }
     
-    config = open_file(argv[1]);
+    config = open_file(argv[2]);
     int num_cpus = init(config);
 
-    if (argc - 2 < num_cpus) {
-        fprintf(stderr, "Not enough trace files provided.\nUsage:\n  %s <config file> <space-separated list of trace files>\n", argv[0]);
-        exit(-1);
+    if (strcmp(argv[1], "-p") == 0) {
+        if (argc - 3 < num_cpus) {
+            std::cout << "Not enough trace files provided for parallel access.\n";
+            print_usage_and_exit();
+        }
+        cpu_threads = (pthread_t*) malloc(sizeof(pthread_t) * num_cpus);
+        pthread_mutex_init(&simulator_mutex, NULL);
+
+        // create thread for each cpu
+        for (int i = 0; i < num_cpus; i++) {
+            pthread_create(&cpu_threads[i], NULL, cpu_thread_sim, (void*) open_file(argv[i + 3]));
+        }
+
+        // wait for all threads to finish
+        for (int i = 0; i < num_cpus; i++) {
+            pthread_join(cpu_threads[i], NULL);
+        }
+
+        sys.print_stats();
+
+        fclose(config);
+        free(cpu_threads);
+        pthread_mutex_destroy(&simulator_mutex);
+    } else if (strcmp(argv[1], "-s") == 0) {
+        FILE* input = open_file(argv[3]);
+        while (next_line(input));
+        sys.print_stats();
+        fclose(input);
+    } else {
+        print_usage_and_exit();
     }
-
-    cpu_threads = (pthread_t*) malloc(sizeof(pthread_t) * num_cpus);
-    pthread_mutex_init(&simulator_mutex, NULL);
-
-    // create thread for each cpu
-    for (int i = 0; i < num_cpus; i++) {
-        pthread_create(&cpu_threads[i], NULL, cpu_thread_sim, (void*) open_file(argv[i + 2]));
-    }
-
-    // wait for all threads to finish
-    for (int i = 0; i < num_cpus; i++) {
-        pthread_join(cpu_threads[i], NULL);
-    }
-
-    sys.print_stats();
-
-    fclose(config);
-    free(cpu_threads);
-    pthread_mutex_destroy(&simulator_mutex);
 
     std::cout << "Simulation Completed\n";
 

@@ -1,16 +1,16 @@
 # multicore-cache
 Trace-driven simulation for cache coherence protocols
 ### Snoopy (bus-based) coherence protocols
-Blue arrows are transitions driven by local (CPU) input, while red arrows are transitions driven by messages snooped from the bus.  
-- MSI [implemented]  
+Blue arrows are transitions driven by local (CPU) input, while red arrows are transitions driven by messages snooped from the bus. Transitions not shown do not change state.   
+- **MSI [implemented]**: Simple coherence protocol for write-back caches, with modified, shared, and invalid states.  
     ![MSI state diagram](diagrams/MSI.png)
-- MESI [in progress]  
+- **MESI [in progress]**: MSI with an addition of "Exclusive" state, when an invalid block receives a local read, and no other cache contains the block. The advantage of this is fewer bus transactions/invalidations since the exclusive block can be modified without invalidating the block in other caches. Based on the [Illinois protocol](https://dl.acm.org/doi/10.1145/800015.808204).
     ![MESI state diagram](diagrams/MESI.png)
-- MOESI
+- **MOESI**: MESI with an addition of "Owned" state
 - etc.
 - Hierarchical snooping?
 ### Directory based coherence protocols
-
+- Each cache block has corresponding entry in directory. Entry is num_cores + 1 bits wide, with one bit corresponding to whether the block is valid in each core, and one bit for whether the block is exclusive to that core. 
 ### Considerations:
 - Need to keep track of data as well (done)
 - How to model bus and bus control

@@ -65,6 +65,7 @@ void System::print_stats(){
     for (int i = 0; i < num_caches; i++) {
         caches[i].print_stats();
     }
+    shared_mem->print_stats();
 }
 
 System::~System() {
