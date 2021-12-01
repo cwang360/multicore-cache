@@ -4,12 +4,6 @@
 #include "cache.h"
 #include "memory.h"
 
-// Cache coherence protocols
-typedef enum {
-    MSI = 0, 
-    MESI = 1
-} protocol_t;
-
 
 class System {
     private:
@@ -20,6 +14,8 @@ class System {
         int num_caches;     // Number of caches/cores
         int protocol;       // Cache coherence protocol. See the definition for protocol_t.
         pthread_mutex_t bus_mutex;
+        counter_t invalidations;
+        counter_t data_bus_transactions;
     public:
         void init(int num_caches, protocol_t protocol, config_t cache_config, int mem_size, int bus_width);
         uint8_t access(int core, addr_t physical_addr, access_t access_type, uint8_t data);

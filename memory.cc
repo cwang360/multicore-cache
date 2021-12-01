@@ -26,8 +26,7 @@ void Memory::access(addr_t physical_addr, int access_type){
 }
 
 void Memory::print_stats() {
-    printf("======================== Main Memory Stats =========================\n"
-            "Writebacks: %llu\n"
+    printf("Writebacks: %llu\n"
             "Data requests from memory: %llu\n", 
             writebacks, data_reqs);
 }

@@ -14,7 +14,7 @@ pthread_mutex_t simulator_mutex;
 FILE* open_file(const char *filename) {
     FILE* file = fopen(filename, "r");
     if (!file) {
-        fprintf(stderr, "File %s could not be opened\n", filename);
+        std::cerr << "File " << filename << " could not be opened\n";
         exit(-1);
     }
     return file;

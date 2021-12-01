@@ -5,8 +5,9 @@
 
 #include "cache.h"
 
-void Cache::init(config_t config, bus_t* bus) {
+void Cache::init(config_t config, protocol_t protocol, bus_t* bus) {
     this->bus = bus;
+    this->protocol = protocol;
 
     stats.hits = 0;
     stats.misses = 0;
@@ -34,7 +35,7 @@ void Cache::init(config_t config, bus_t* bus) {
     cache = (cache_set_t*) malloc(num_sets * sizeof(cache_set_t));
     if (cache == NULL) {
         printf("Could not allocate memory for cache\n");
-        exit(1);
+        exit(-1);
     }
     for (int i = 0; i < num_sets; i++) {
         cache[i].size = ways;
@@ -42,7 +43,7 @@ void Cache::init(config_t config, bus_t* bus) {
         cache[i].blocks = (cache_block_t*) malloc(ways * sizeof(cache_block_t));
         if (cache[i].blocks == NULL) {
             printf("Could not allocate memory for cache blocks\n");
-            exit(1);
+            exit(-1);
         }
         for (int j = 0; j < ways; j++) {
             cache[i].blocks[j].tag = 0;
@@ -215,7 +216,7 @@ uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t da
             break;
         }
     }
-    if (!hit) {
+    if (!hit) { // miss
         stats.misses++;
         if (access_type == IFETCH) stats.instr_misses++;
         if (access_type == MEMWRITE || access_type == MEMREAD) stats.data_misses++;
@@ -223,7 +224,7 @@ uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t da
         if (access_type == MEMWRITE) {
             bus->message = WRITE_MISS;
         } else if (access_type == MEMREAD || access_type == IFETCH) {
-            bus->message = READ_MISS;
+            bus->message = READ_MISS; // MSI
         }
     }
 

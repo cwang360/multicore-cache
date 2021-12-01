@@ -27,10 +27,19 @@ class LruStack {
         ~LruStack();
 };
 
+typedef enum {
+    INVALID,
+    SHARED,
+    MODIFIED,
+    EXCLUSIVE,
+    OWNER
+} state_t;
+
 typedef struct cache_block_t {
 	int tag;
 	int valid;
 	int dirty;
+    state_t state;
     uint8_t* data;
 } cache_block_t;
 
@@ -96,9 +105,10 @@ class Cache {
         cache_set_t* cache;		// Array of cache sets representing the cache.
         int cache_type;
         bus_t* bus;
+        protocol_t protocol;
     public:
         // Cache(int _block_size, int _cache_size, int _ways, int _hit_time, int _miss_penalty);
-        void init(config_t config, bus_t* bus);
+        void init(config_t config, protocol_t protocol, bus_t* bus);
         ~Cache();
         
         uint8_t user_access(addr_t physical_addr, access_t access_type, uint8_t data);
