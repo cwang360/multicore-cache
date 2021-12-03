@@ -39,7 +39,7 @@ void Cache::init(config_t config, protocol_t protocol, bus_t* bus) {
     }
     for (int i = 0; i < num_sets; i++) {
         cache[i].size = ways;
-        cache[i].stack = new LruStack(ways);
+        cache[i].stack = new Cache::LruStack(ways);
         cache[i].blocks = (cache_block_t*) malloc(ways * sizeof(cache_block_t));
         if (cache[i].blocks == NULL) {
             printf("Could not allocate memory for cache blocks\n");
@@ -50,6 +50,7 @@ void Cache::init(config_t config, protocol_t protocol, bus_t* bus) {
             cache[i].blocks[j].dirty = 0;
             cache[i].blocks[j].valid = 0;
             cache[i].blocks[j].data = (uint8_t*) malloc(block_size * sizeof(uint8_t));
+            cache[i].blocks[j].state = INVALID;
         }
     }
 }
@@ -65,7 +66,7 @@ Cache::~Cache() {
     free(cache);
 }
 
-uint8_t Cache::user_access(addr_t physical_addr, access_t access_type, uint8_t data) {
+uint8_t Cache::processor_access(addr_t physical_addr, access_t access_type, uint8_t data) {
 
     // Use bit manipulation to extract tag, index, offset from physical_addr
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
@@ -92,6 +93,7 @@ uint8_t Cache::user_access(addr_t physical_addr, access_t access_type, uint8_t d
             accessed_way = way;
             if (access_type == MEMWRITE) {
                 cache[index].blocks[way].dirty = 1;
+                cache[index].blocks[way].state = MODIFIED;
                 cache[index].blocks[way].data[offset] = data;
             } 
             // printf("access %d %d %llx\n", index, way, cache[index].blocks[way].data);
@@ -129,9 +131,11 @@ uint8_t Cache::user_access(addr_t physical_addr, access_t access_type, uint8_t d
         }
         if (access_type == MEMWRITE) {
             cache[index].blocks[accessed_way].dirty = 1;
+            cache[index].blocks[accessed_way].state = MODIFIED;
             cache[index].blocks[accessed_way].data[offset] = data;
         } else {
             cache[index].blocks[accessed_way].dirty = 0;
+            cache[index].blocks[accessed_way].state = SHARED;
         }        
         result = cache[index].blocks[accessed_way].data[offset];
         // printf("access %d %d %llx\n", index, accessed_way, cache[index].blocks[accessed_way].data);
@@ -155,6 +159,7 @@ void Cache::system_access(addr_t physical_addr, access_t access_type) {
         for (int way = 0; way < ways; way++) {
             if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
                 cache[index].blocks[way].dirty = 0; // now is shared, and memory will be updated
+                cache[index].blocks[way].state = SHARED;
                 memcpy(bus->data, cache[index].blocks[way].data, sizeof(uint8_t) * block_size);
             } 
         }
@@ -206,12 +211,14 @@ uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t da
             stats.hits++;
             hit = 1;
             if (access_type == MEMWRITE) {
-                if (!cache[index].blocks[way].dirty) {
+                if (cache[index].blocks[way].state != MODIFIED) {
                     bus->message = INVALIDATE;
+                    cache[index].blocks[way].state = MODIFIED;
                 }
                 cache[index].blocks[way].dirty = 1;
                 cache[index].blocks[way].data[offset] = data;
             }
+            // If not hit and memread, state doesn't change.
             result = cache[index].blocks[way].data[offset];
             break;
         }
@@ -231,7 +238,7 @@ uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t da
     return result;
 }
 
-add_result_t Cache::add_block(addr_t physical_addr, access_t access_type) {
+Cache::add_result_t Cache::add_block(addr_t physical_addr, access_t access_type) {
         // Use bit manipulation to extract tag, index, offset from physical_addr
     int tag = physical_addr >> (num_index_bits + num_offset_bits);
     int index = (physical_addr >> num_offset_bits) & ((1 << num_index_bits) - 1);
@@ -292,6 +299,7 @@ int Cache::invalidate(addr_t evicted_addr) {
     for (int way = 0; way < ways; way++) {
         if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // found block
             cache[index].blocks[way].valid = 0;
+            cache[index].blocks[way].state = INVALID;
             if (cache[index].blocks[way].dirty) {
                 return 1;
             }
@@ -351,7 +359,7 @@ stats_t* Cache::get_stats() {
     return &stats;
 }
 
-LruStack::LruStack(int size) {
+Cache::LruStack::LruStack(int size) {
 	size = size;
     
     index_map = (stack_node**) malloc(size * sizeof(stack_node*));
@@ -366,11 +374,11 @@ LruStack::LruStack(int size) {
     most_recent = NULL;
 }
 
-int LruStack::get_lru() {
+int Cache::LruStack::get_lru() {
     return least_recent->index;
 }
 
-void LruStack::set_mru(int n) {
+void Cache::LruStack::set_mru(int n) {
     // If already most recent, no need to do anything else.
     if (most_recent != NULL && most_recent->index == n) {
         return;
@@ -414,7 +422,7 @@ void LruStack::set_mru(int n) {
     }
 }
 
-LruStack::~LruStack() {
+Cache::LruStack::~LruStack() {
     // Free all nodes in linked list.
     stack_node* curr = most_recent;
     while (curr != NULL) {

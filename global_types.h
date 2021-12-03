@@ -22,7 +22,9 @@ typedef enum {
     WRITE_MISS = 2,
     INVALIDATE = 3,
     DATA = 4, 
-    WRITEBACK = 5
+    WRITEBACK = 5,
+    SET_EXCLUSIVE,
+    SET_SHARED
 } message_t;
 
 // Bus struct

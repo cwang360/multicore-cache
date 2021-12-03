@@ -8,25 +8,6 @@
 #define L1 0
 #define L2 1
 
-typedef struct stack_node {
-    int index; // index of way
-    struct stack_node* next_more_recent;
-    struct stack_node* next_less_recent;
-} stack_node;
-
-class LruStack {
-    private:
-        int size;   // Corresponds to the associativity
-        stack_node* most_recent;
-        stack_node* least_recent;
-        stack_node** index_map; // array to map a way's index to its node (so we don't have to search through list)
-    public:
-        LruStack(int size);
-        int get_lru();
-        void set_mru(int n);
-        ~LruStack();
-};
-
 typedef enum {
     INVALID,
     SHARED,
@@ -34,21 +15,6 @@ typedef enum {
     EXCLUSIVE,
     OWNER
 } state_t;
-
-typedef struct cache_block_t {
-	int tag;
-	int valid;
-	int dirty;
-    state_t state;
-    uint8_t* data;
-} cache_block_t;
-
-typedef struct cache_set_t {
-	int size;				// Number of blocks in this cache set
-	LruStack* stack;		    // LRU Stack 
-	cache_block_t* blocks;	// Array of cache block structs. 
-} cache_set_t;
-
 
 /**
  * Struct to hold global stats
@@ -70,28 +36,28 @@ typedef struct stats_t {
     int miss_penalty;
 } stats_t;
 
-typedef struct config_t {
-    int line_size;
-    int cache_size;
-    int associativity;
-    int hit_time;
-    int miss_penalty;
-    int cache_type;
-} config_t;
-
-typedef struct add_result_t {
-	int evicted;
-	addr_t evicted_addr;
-	int evicted_dirty;
-} add_result_t;
-
-typedef struct access_result_t {
-    int hit;
-    uint8_t data;
-} access_result_t;
-
 class Cache {
     private:
+        // Private types
+        class LruStack;
+        
+        class StateHandler;
+        
+        typedef struct cache_block_t {
+            int tag;
+            int valid;
+            int dirty;
+            state_t state;
+            uint8_t* data;
+        } cache_block_t;
+
+        typedef struct cache_set_t {
+            int size;				// Number of blocks in this cache set
+            LruStack* stack;		    // LRU Stack 
+            cache_block_t* blocks;	// Array of cache block structs. 
+        } cache_set_t;
+        
+        // Private instance variables
         stats_t stats;
         int block_size;			// Size of a cache block in bytes
         int cache_size;			// Size of cache in bytes
@@ -106,12 +72,30 @@ class Cache {
         int cache_type;
         bus_t* bus;
         protocol_t protocol;
+
     public:
+        // Public types
+        typedef struct config_t {
+            int line_size;
+            int cache_size;
+            int associativity;
+            int hit_time;
+            int miss_penalty;
+            int cache_type;
+        } config_t;
+        
+        typedef struct add_result_t {
+            int evicted;
+            addr_t evicted_addr;
+            int evicted_dirty;
+        } add_result_t;
+
+        // Public methods
         // Cache(int _block_size, int _cache_size, int _ways, int _hit_time, int _miss_penalty);
         void init(config_t config, protocol_t protocol, bus_t* bus);
         ~Cache();
         
-        uint8_t user_access(addr_t physical_addr, access_t access_type, uint8_t data);
+        uint8_t processor_access(addr_t physical_addr, access_t access_type, uint8_t data);
         void system_access(addr_t physical_addr, access_t access_type);
 
         uint8_t try_access(addr_t physical_addr, access_t access_type, uint8_t data);
@@ -121,6 +105,32 @@ class Cache {
 
         void print_stats();
         stats_t* get_stats();
+};
+
+class Cache::LruStack {
+    private:
+        typedef struct stack_node {
+            int index; // index of way
+            struct stack_node* next_more_recent;
+            struct stack_node* next_less_recent;
+        } stack_node;
+
+        int size;   // Corresponds to the associativity
+        stack_node* most_recent;
+        stack_node* least_recent;
+        stack_node** index_map; // array to map a way's index to its node (so we don't have to search through list)
+    public:
+        LruStack(int size);
+        int get_lru();
+        void set_mru(int n);
+        ~LruStack();
+};
+
+class Cache::StateHandler {
+    private:
+        protocol_t protocol;
+    public:
+        StateHandler(protocol_t p) : protocol(p) {}
 };
 
 #endif

@@ -5,7 +5,7 @@
 
 #include "system.h"
 
-void System::init(int num_caches, protocol_t protocol, config_t cache_config, int mem_size, int bus_width){
+void System::init(int num_caches, protocol_t protocol, Cache::config_t cache_config, int mem_size, int bus_width){
     this->protocol = protocol;
     this->num_caches = num_caches;
     this->bus_width = bus_width;
@@ -52,7 +52,7 @@ uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uin
         }
         data_bus_transactions++;
         caches[core].system_access(physical_addr, STORE);
-        result_data = caches[core].user_access(physical_addr, access_type, data);
+        result_data = caches[core].processor_access(physical_addr, access_type, data);
         if (bus.message == WRITEBACK) {
             data_bus_transactions++;
             shared_mem->access(bus.addr, STORE);
@@ -60,6 +60,7 @@ uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uin
         bus.message = NONE;
     } 
     if (message == WRITE_MISS || message == INVALIDATE) {
+        std::cout << "INVALIDATION\n";
         // invalidate others
         invalidations++;
         for (int i = 0; i < num_caches; i++) {

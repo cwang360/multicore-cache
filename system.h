@@ -17,7 +17,7 @@ class System {
         counter_t invalidations;
         counter_t data_bus_transactions;
     public:
-        void init(int num_caches, protocol_t protocol, config_t cache_config, int mem_size, int bus_width);
+        void init(int num_caches, protocol_t protocol, Cache::config_t cache_config, int mem_size, int bus_width);
         uint8_t access(int core, addr_t physical_addr, access_t access_type, uint8_t data);
         void print_stats();
         ~System();

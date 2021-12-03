@@ -56,7 +56,7 @@ int next_line(FILE* trace) {
 int init(FILE* config) {
     int num_cpus;
     protocol_t protocol;
-    config_t cache_cfg1;
+    Cache::config_t cache_cfg1;
     cache_cfg1.cache_type = L1;
     int mem_size;
     int bus_width;
