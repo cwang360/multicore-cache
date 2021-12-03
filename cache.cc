@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cmath>
+#include <iostream>
 
 #include "cache.h"
 
@@ -34,7 +35,7 @@ void Cache::init(config_t config, protocol_t protocol, bus_t* bus) {
     // allocate and initialize the cache as an array of cache sets with cache blocks.
     cache = (cache_set_t*) malloc(num_sets * sizeof(cache_set_t));
     if (cache == NULL) {
-        printf("Could not allocate memory for cache\n");
+        std::cerr << "Could not allocate memory for cache\n";
         exit(-1);
     }
     for (int i = 0; i < num_sets; i++) {
@@ -42,7 +43,7 @@ void Cache::init(config_t config, protocol_t protocol, bus_t* bus) {
         cache[i].stack = new Cache::LruStack(ways);
         cache[i].blocks = (cache_block_t*) malloc(ways * sizeof(cache_block_t));
         if (cache[i].blocks == NULL) {
-            printf("Could not allocate memory for cache blocks\n");
+            std::cerr << "Could not allocate memory for cache blocks\n";
             exit(-1);
         }
         for (int j = 0; j < ways; j++) {
@@ -82,69 +83,22 @@ uint8_t Cache::processor_access(addr_t physical_addr, access_t access_type, uint
     int accessed_way = -1;
 
     uint8_t result;
-    int hit = 0;
 
-    // Check if tag exists in set
-    int empty_way = -1;
     for (int way = 0; way < ways; way++) {
         if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
-            hit = 1;
             // stats.hits++;
             accessed_way = way;
             if (access_type == MEMWRITE) {
                 cache[index].blocks[way].dirty = 1;
-                cache[index].blocks[way].state = MODIFIED;
                 cache[index].blocks[way].data[offset] = data;
             } 
             // printf("access %d %d %llx\n", index, way, cache[index].blocks[way].data);
             result = cache[index].blocks[way].data[offset];
+            // Update LRU stack
+            cache[index].stack->set_mru(way);
             break;
         }
-        if (!cache[index].blocks[way].valid) {
-            empty_way = way; // keep track of first empty way, in case we need to add a block to the cache.
-        }
     }
-
-    if (accessed_way == -1) { // miss
-        // stats.misses++;
-        // if (access_type == IFETCH) stats.instr_misses++;
-        // if (access_type == MEMWRITE || access_type == MEMREAD) stats.data_misses++;
-        if (empty_way > -1) {
-            accessed_way = empty_way; // use empty way
-        } else {
-            accessed_way = cache[index].stack->get_lru(); // need to replace a block
-            // write back data being replaced if it is dirty
-            if (cache[index].blocks[accessed_way].dirty) {
-                stats.writebacks++;
-                bus->message = WRITEBACK;
-                bus->addr = (cache[index].blocks[accessed_way].tag 
-                            << (num_index_bits + num_offset_bits))
-                            | (index << num_offset_bits); // address of evicted block
-                memcpy(bus->data, cache[index].blocks[accessed_way].data, sizeof(uint8_t) * block_size);
-            }
-        }
-        // Update metadata
-        cache[index].blocks[accessed_way].valid = 1;
-        cache[index].blocks[accessed_way].tag = tag;
-        for (int i = 0; i < block_size; i++) {
-            cache[index].blocks[accessed_way].data[i] = 0;
-        }
-        if (access_type == MEMWRITE) {
-            cache[index].blocks[accessed_way].dirty = 1;
-            cache[index].blocks[accessed_way].state = MODIFIED;
-            cache[index].blocks[accessed_way].data[offset] = data;
-        } else {
-            cache[index].blocks[accessed_way].dirty = 0;
-            cache[index].blocks[accessed_way].state = SHARED;
-        }        
-        result = cache[index].blocks[accessed_way].data[offset];
-        // printf("access %d %d %llx\n", index, accessed_way, cache[index].blocks[accessed_way].data);
-
-    }
-
-    // Update LRU stack
-    cache[index].stack->set_mru(accessed_way);
-
     return result;
 }
 
@@ -159,7 +113,8 @@ void Cache::system_access(addr_t physical_addr, access_t access_type) {
         for (int way = 0; way < ways; way++) {
             if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
                 cache[index].blocks[way].dirty = 0; // now is shared, and memory will be updated
-                cache[index].blocks[way].state = SHARED;
+                // cache[index].blocks[way].state = SHARED;
+                transition_bus(&cache[index].blocks[way], READ_MISS);
                 memcpy(bus->data, cache[index].blocks[way].data, sizeof(uint8_t) * block_size);
             } 
         }
@@ -187,8 +142,6 @@ void Cache::system_access(addr_t physical_addr, access_t access_type) {
         cache[index].blocks[accessed_way].valid = 1;
         cache[index].blocks[accessed_way].dirty = 0;
         cache[index].blocks[accessed_way].tag = tag;
-        // // Update LRU stack?
-        // cache[index].stack->set_mru(accessed_way);
     }
 }
 
@@ -204,23 +157,22 @@ uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t da
     uint8_t result;
     int hit = 0;
 
-    // Check if tag exists in set
+    // Check if valid block exists
     int empty_way = -1;
     for (int way = 0; way < ways; way++) {
         if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // hit
             stats.hits++;
             hit = 1;
             if (access_type == MEMWRITE) {
-                if (cache[index].blocks[way].state != MODIFIED) {
-                    bus->message = INVALIDATE;
-                    cache[index].blocks[way].state = MODIFIED;
-                }
                 cache[index].blocks[way].dirty = 1;
                 cache[index].blocks[way].data[offset] = data;
             }
-            // If not hit and memread, state doesn't change.
+            transition_processor(&cache[index].blocks[way], access_type);
             result = cache[index].blocks[way].data[offset];
             break;
+        }
+        if (empty_way == -1 && !cache[index].blocks[way].valid) {
+            empty_way = way; // keep track of an empty way, in case we need to add a block to the cache.
         }
     }
     if (!hit) { // miss
@@ -228,11 +180,10 @@ uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t da
         if (access_type == IFETCH) stats.instr_misses++;
         if (access_type == MEMWRITE || access_type == MEMREAD) stats.data_misses++;
 
-        if (access_type == MEMWRITE) {
-            bus->message = WRITE_MISS;
-        } else if (access_type == MEMREAD || access_type == IFETCH) {
-            bus->message = READ_MISS; // MSI
-        }
+        transition_processor(
+            empty_way > -1 ? &cache[index].blocks[empty_way] : &cache[index].blocks[cache[index].stack->get_lru()],
+            access_type
+        );
     }
 
     return result;
@@ -299,7 +250,7 @@ int Cache::invalidate(addr_t evicted_addr) {
     for (int way = 0; way < ways; way++) {
         if (cache[index].blocks[way].tag == tag && cache[index].blocks[way].valid) { // found block
             cache[index].blocks[way].valid = 0;
-            cache[index].blocks[way].state = INVALID;
+            transition_bus(&cache[index].blocks[way], INVALIDATE);
             if (cache[index].blocks[way].dirty) {
                 return 1;
             }
@@ -322,6 +273,61 @@ int Cache::check_dirty(addr_t physical_addr) {
         }
     }
     return 0;
+}
+
+void Cache::transition_bus(cache_block_t* cache_block, message_t bus_message) {
+    state_t old_state = cache_block->state;
+    switch (protocol) {
+        case MSI:
+            if (cache_block->state == SHARED) {
+                if (bus_message == WRITE_MISS || bus_message == INVALIDATE) {
+                    cache_block->state = INVALID;
+                }
+            } else if (cache_block->state == MODIFIED) {
+                if (bus_message == INVALIDATE) {
+                    cache_block->state = INVALID;
+                } else if (bus_message == WRITE_MISS) {
+                    cache_block->state = INVALID;
+                    memcpy(bus->data, cache_block->data, sizeof(uint8_t) * block_size);
+                } else if (bus_message == READ_MISS) {
+                    cache_block->state = SHARED;
+                    memcpy(bus->data, cache_block->data, sizeof(uint8_t) * block_size);
+                }
+            }
+            break;
+        case MESI:
+            break;
+        default:
+            break;
+    }
+    // std::cout << "    Cache block " << cache_block << " state: " << old_state << " -> " << cache_block->state << "\n";
+}
+
+void Cache::transition_processor(cache_block_t* cache_block, access_t request) {
+    state_t old_state = cache_block->state;
+    switch (protocol) {
+        case MSI:
+            if (cache_block->state == INVALID) {
+                if (request == MEMREAD || request == IFETCH) {
+                    cache_block->state = SHARED;
+                    bus->message = READ_MISS;
+                } else if (request == MEMWRITE) {
+                    cache_block->state = MODIFIED;
+                    bus->message = WRITE_MISS;
+                }
+            } else if (cache_block->state == SHARED) {
+                if (request == MEMWRITE) {
+                    cache_block->state = MODIFIED;
+                    bus->message = INVALIDATE;
+                }
+            }
+            break;
+        case MESI:
+            break;
+        default:
+            break;
+    }
+    // std::cout << "    Cache block " << cache_block << " state: " << old_state << " -> " << cache_block->state << "\n";
 }
 
 void Cache::print_stats() {
@@ -364,7 +370,7 @@ Cache::LruStack::LruStack(int size) {
     
     index_map = (stack_node**) malloc(size * sizeof(stack_node*));
     if (index_map == NULL) {
-        printf("Could not allocate memory for LRU stack index map\n");
+        std::cerr << "Could not allocate memory for LRU stack index map\n";
         exit(1);
     }
     for (int i = 0; i < size; i++) {
@@ -374,6 +380,7 @@ Cache::LruStack::LruStack(int size) {
     most_recent = NULL;
 }
 
+// this should never be called before an mru is set
 int Cache::LruStack::get_lru() {
     return least_recent->index;
 }
@@ -406,7 +413,7 @@ void Cache::LruStack::set_mru(int n) {
         // most recent spot in the linked list.
         stack_node* temp = (stack_node*) malloc(sizeof(stack_node));
         if (temp == NULL) {
-            printf("Could not allocate memory for LRU stack entry\n");
+            std::cerr << "Could not allocate memory for LRU stack entry\n";
             exit(1);
         }
         temp->next_more_recent = NULL;

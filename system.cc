@@ -32,7 +32,6 @@ void System::init(int num_caches, protocol_t protocol, Cache::config_t cache_con
 uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uint8_t data){
     pthread_mutex_lock(&bus_mutex);
     uint8_t result_data = caches[core].try_access(physical_addr, access_type, data);
-    // std::cout << result.message << "\n";
     message_t message = bus.message;
     bus.message = NONE;
 
@@ -60,7 +59,7 @@ uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uin
         bus.message = NONE;
     } 
     if (message == WRITE_MISS || message == INVALIDATE) {
-        std::cout << "INVALIDATION\n";
+        // std::cout << "INVALIDATION\n";
         // invalidate others
         invalidations++;
         for (int i = 0; i < num_caches; i++) {

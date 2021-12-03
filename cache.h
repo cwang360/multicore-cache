@@ -9,11 +9,11 @@
 #define L2 1
 
 typedef enum {
-    INVALID,
-    SHARED,
-    MODIFIED,
-    EXCLUSIVE,
-    OWNER
+    INVALID = 0,
+    SHARED = 1,
+    MODIFIED = 2,
+    EXCLUSIVE = 3,
+    OWNER = 4
 } state_t;
 
 /**
@@ -40,8 +40,6 @@ class Cache {
     private:
         // Private types
         class LruStack;
-        
-        class StateHandler;
         
         typedef struct cache_block_t {
             int tag;
@@ -72,6 +70,12 @@ class Cache {
         int cache_type;
         bus_t* bus;
         protocol_t protocol;
+
+        // Private methods
+        // Transition invoked by message snooped from bus
+        void transition_bus(cache_block_t* cache_block, message_t bus_message);
+        // Transition invoked by access from processor (local read or local write)
+        void transition_processor(cache_block_t* cache_block, access_t processor_message);
 
     public:
         // Public types
@@ -124,13 +128,6 @@ class Cache::LruStack {
         int get_lru();
         void set_mru(int n);
         ~LruStack();
-};
-
-class Cache::StateHandler {
-    private:
-        protocol_t protocol;
-    public:
-        StateHandler(protocol_t p) : protocol(p) {}
 };
 
 #endif

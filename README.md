@@ -10,6 +10,8 @@ Blue arrows are transitions driven by local (CPU) input, while red arrows are tr
 - etc.
 - Update-based like Dragon and Firefly?
 - Hierarchical snooping?
+
+State transition logic is abstracted in Cache::transition_bus and Cache::transition_processor (see [cache.cc](cache.cc#L278))
 ### Directory based coherence protocols
 - Each cache block has corresponding entry in directory. Entry is num_cores + 1 bits wide, with one bit corresponding to whether the block is valid in each core, and one bit for whether the block is exclusive to that core. 
 ### Considerations:
