@@ -5,8 +5,9 @@
 
 #include "memory.h"
 
-void Memory::init(int size, int block_size, bus_t* bus){
-    mem = (uint8_t*) malloc(size * sizeof(uint8_t));
+void Memory::init(unsigned int size, unsigned int block_size, bus_t* bus){
+    mem = new uint8_t[size];
+    for (unsigned int i = 0; i < size; i++) mem[i] = 0;
     this->size = size;
     this->block_size = block_size;
     this->bus = bus;
@@ -14,7 +15,7 @@ void Memory::init(int size, int block_size, bus_t* bus){
     data_reqs = 0;
 }
 
-void Memory::access(addr_t physical_addr, int access_type){
+void Memory::access(addr_t physical_addr, access_t access_type){
     uint8_t* mem_block = mem + physical_addr;
     if (access_type == STORE) {
         memcpy(mem_block, bus->data, sizeof(uint8_t) * block_size);
@@ -32,5 +33,5 @@ void Memory::print_stats() {
 }
 
 Memory::~Memory(){
-    free(mem);
+    delete [] mem;
 }

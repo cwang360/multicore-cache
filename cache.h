@@ -42,7 +42,7 @@ class Cache {
         class LruStack;
         
         typedef struct cache_block_t {
-            int tag;
+            unsigned int tag;
             int valid;
             int dirty;
             state_t state;
@@ -50,20 +50,26 @@ class Cache {
         } cache_block_t;
 
         typedef struct cache_set_t {
-            int size;				// Number of blocks in this cache set
+            unsigned int size;				// Number of blocks in this cache set
             LruStack* stack;		    // LRU Stack 
             cache_block_t* blocks;	// Array of cache block structs. 
         } cache_set_t;
+
+        typedef struct addr_split_t {
+            unsigned int tag;
+            unsigned int index;
+            unsigned int offset;
+        } addr_split_t;
         
         // Private instance variables
         stats_t stats;
-        int block_size;			// Size of a cache block in bytes
-        int cache_size;			// Size of cache in bytes
-        int ways;				// Number of ways
-        int num_blocks;         // Number of total cache blocks
-        int num_sets;           // Number of sets
-        int num_offset_bits;    // Number of offset bits
-        int num_index_bits;     // Number of index bits. 
+        unsigned int block_size;			// Size of a cache block in bytes
+        unsigned int cache_size;			// Size of cache in bytes
+        unsigned int ways;				// Number of ways
+        unsigned int num_blocks;         // Number of total cache blocks
+        unsigned int num_sets;           // Number of sets
+        unsigned int num_offset_bits;    // Number of offset bits
+        unsigned int num_index_bits;     // Number of index bits. 
         int hit_time;
         int miss_penalty;
         cache_set_t* cache;		// Array of cache sets representing the cache.
@@ -77,21 +83,23 @@ class Cache {
         // Transition invoked by access from processor (local read or local write)
         void transition_processor(cache_block_t* cache_block, access_t processor_message);
 
+        addr_split_t split_address(addr_t physical_addr);
+
     public:
         // Public types
         typedef struct config_t {
-            int line_size;
-            int cache_size;
-            int associativity;
+            unsigned int line_size;
+            unsigned int cache_size;
+            unsigned int associativity;
             int hit_time;
             int miss_penalty;
             int cache_type;
         } config_t;
         
         typedef struct add_result_t {
-            int evicted;
+            bool evicted;
             addr_t evicted_addr;
-            int evicted_dirty;
+            bool evicted_dirty;
         } add_result_t;
 
         // Public methods
@@ -104,8 +112,8 @@ class Cache {
 
         uint8_t try_access(addr_t physical_addr, access_t access_type, uint8_t data);
         add_result_t add_block(addr_t physical_addr, access_t access_type);
-        int invalidate(addr_t evicted_addr);
-        int check_dirty(addr_t physical_addr);
+        bool invalidate(addr_t evicted_addr);
+        bool check_dirty(addr_t physical_addr);
 
         void print_stats();
         stats_t* get_stats();
@@ -114,19 +122,19 @@ class Cache {
 class Cache::LruStack {
     private:
         typedef struct stack_node {
-            int index; // index of way
+            unsigned int index; // index of way
             struct stack_node* next_more_recent;
             struct stack_node* next_less_recent;
         } stack_node;
 
-        int size;   // Corresponds to the associativity
+        unsigned int size;   // Corresponds to the associativity
         stack_node* most_recent;
         stack_node* least_recent;
         stack_node** index_map; // array to map a way's index to its node (so we don't have to search through list)
     public:
-        LruStack(int size);
-        int get_lru();
-        void set_mru(int n);
+        LruStack(unsigned int size);
+        unsigned int get_lru();
+        void set_mru(unsigned int n);
         ~LruStack();
 };
 

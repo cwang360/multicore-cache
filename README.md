@@ -11,7 +11,7 @@ Blue arrows are transitions driven by local (CPU) input, while red arrows are tr
 - Update-based like Dragon and Firefly?
 - Hierarchical snooping?
 
-State transition logic is abstracted in Cache::transition_bus and Cache::transition_processor (see [cache.cc](cache.cc#L278))
+State transition logic is abstracted in [Cache::transition_bus](cache.cc#L278) and [Cache::transition_processor](cache.cc#L338)
 ### Directory based coherence protocols
 - Each cache block has corresponding entry in directory. Entry is num_cores + 1 bits wide, with one bit corresponding to whether the block is valid in each core, and one bit for whether the block is exclusive to that core. 
 ### Considerations:
@@ -29,13 +29,19 @@ State transition logic is abstracted in Cache::transition_bus and Cache::transit
 - Deal with bus widths smaller than line size
 - Generate memory traces with Intel's [Pin](https://www.intel.com/content/www/us/en/developer/articles/tool/pin-a-dynamic-binary-instrumentation-tool.html) tool
 ## Compile and run simulation
+To compile, run `make`. 
+To run, using a single trace file for all cores:
 ```
-$ g++ cache.cc memory.cc system.cc simulator.cc -o simulator
+$ ./simulator <config> -s <trace file>
 ```
+Example:
 ```
-$ ./simulator <config> <space-delimited list of trace files>
+$ ./simulator config.txt -s traces/simple.trace
 ```
-List one trace file per core.
+If using a separate trace file for each core:
+```
+$ ./simulator <config> -p <space delimited list of trace files>
+```
 ## Config file format
 ```
 <number of cores>, <coherence protocol>
@@ -47,6 +53,7 @@ All sizes are in bytes.
 - MSI = 0
 - MESI = 1
 ## Trace file format
+Each line should be of the following form:
 ```
 <core num> <access type> <address> <data>
 ```

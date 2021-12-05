@@ -5,10 +5,10 @@
 
 #include "system.h"
 
-void System::init(int num_caches, protocol_t protocol, Cache::config_t cache_config, int mem_size, int bus_width){
-    this->protocol = protocol;
-    this->num_caches = num_caches;
-    this->bus_width = bus_width;
+void System::init(unsigned int _num_caches, protocol_t _protocol, Cache::config_t cache_config, unsigned int mem_size, unsigned int _bus_width){
+    this->protocol = _protocol;
+    this->num_caches = _num_caches;
+    this->bus_width = _bus_width;
     invalidations = 0;
     data_bus_transactions = 0;
     pthread_mutex_init(&bus_mutex, NULL);
@@ -24,26 +24,30 @@ void System::init(int num_caches, protocol_t protocol, Cache::config_t cache_con
     shared_mem->init(mem_size, cache_config.line_size, &bus);
 
     caches = new Cache[num_caches];
-    for (int i = 0; i < num_caches; i++) {
+    for (unsigned int i = 0; i < num_caches; i++) {
         caches[i].init(cache_config, protocol, &bus);
     }
 }
 
-uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uint8_t data){
+uint8_t System::access(unsigned int core, addr_t physical_addr, access_t access_type, uint8_t data){
     pthread_mutex_lock(&bus_mutex);
     uint8_t result_data = caches[core].try_access(physical_addr, access_type, data);
     message_t message = bus.message;
     bus.message = NONE;
 
     if (message == READ_MISS || message == WRITE_MISS) {
-        int dirty_cache = -1;
+        unsigned int dirty_cache;
+        bool dirty = false;
         // check if other caches have dirty copy
-        for (int i = 0; i < num_caches; i++) {
+        for (unsigned int i = 0; i < num_caches; i++) {
             if (i != core) {
-                if (caches[i].check_dirty(physical_addr)) dirty_cache = i;
+                if (caches[i].check_dirty(physical_addr)) {
+                    dirty_cache = i;
+                    dirty = true;
+                }
             }
         }
-        if (dirty_cache < 0) {
+        if (!dirty) {
             shared_mem->access(physical_addr, SEND);
         } else {
             caches[dirty_cache].system_access(physical_addr, SEND);
@@ -62,7 +66,7 @@ uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uin
         // std::cout << "INVALIDATION\n";
         // invalidate others
         invalidations++;
-        for (int i = 0; i < num_caches; i++) {
+        for (unsigned int i = 0; i < num_caches; i++) {
             if (i != core) caches[i].invalidate(physical_addr);
         }
     }
@@ -71,7 +75,7 @@ uint8_t System::access(int core, addr_t physical_addr, access_t access_type, uin
 }
 
 void System::print_stats(){
-    for (int i = 0; i < num_caches; i++) {
+    for (unsigned int i = 0; i < num_caches; i++) {
         caches[i].print_stats();
     }
     std::cout << "======================== System Stats =========================\n";
