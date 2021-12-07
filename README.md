@@ -2,7 +2,7 @@
 Trace-driven simulation for cache coherence protocols
 ### Snoopy (bus-based) coherence protocols
 Blue arrows are transitions driven by local (CPU) input, while red arrows are transitions driven by messages snooped from the bus. Bus message-triggered transitions not shown do not change state.   
-- **MSI [implemented]**: Simple coherence protocol for write-back caches, with modified, shared, and invalid states.  
+- **MSI [implemented]**: Simple coherence protocol for write-back caches, with modified, shared, and invalid states. A dirty cache block is also written back to memory whenever the data is put on the bus due to another cache requesting it.   
     ![MSI state diagram](diagrams/MSI.png)
 - **MESI [in progress]**: MSI with an addition of "Exclusive" state, when an invalid block receives a local read, and no other cache contains the block. The advantage of this is fewer bus transactions/invalidations since the exclusive block can be modified without invalidating the block in other caches. Based on the [Illinois protocol](https://dl.acm.org/doi/10.1145/800015.808204).
     ![MESI state diagram](diagrams/MESI.png)
@@ -42,6 +42,7 @@ If using a separate trace file for each core:
 ```
 $ ./simulator <config> -p <space delimited list of trace files>
 ```
+[TODO] Use the `-v` flag for verbose output (see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks)
 ## Config file format
 ```
 <number of cores>, <coherence protocol>

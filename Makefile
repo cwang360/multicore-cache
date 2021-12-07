@@ -1,7 +1,7 @@
 TARGET = simulator
 
 CC = g++
-CFLAGS = -pthread -Wall -Wextra -Wsign-conversion -Wpointer-arith -Wcast-qual -Wwrite-strings -Wmissing-prototypes #-Wshadow 
+CFLAGS = -pthread -Wall -Wextra -Wsign-conversion -Wpointer-arith -Wcast-qual -Wwrite-strings #-Wshadow 
 DEBFLAGS = -g
 
 SRCEXTS = .cc

@@ -10,11 +10,16 @@
 
 typedef enum {
     INVALID = 0,
-    SHARED = 1,
-    MODIFIED = 2,
-    EXCLUSIVE = 3,
-    OWNER = 4
+    SHARED,
+    MODIFIED,
+    EXCLUSIVE,
+    OWNER
 } state_t;
+
+inline std::ostream& operator<<(std::ostream& os, const state_t state) {
+    const std::string state_names[] = {"INVALID", "SHARED", "MODIFIED", "EXCLUSIVE", "OWNER"};
+    return os << state_names[state];
+}
 
 /**
  * Struct to hold global stats
@@ -108,7 +113,7 @@ class Cache {
         ~Cache();
         
         uint8_t processor_access(addr_t physical_addr, access_t access_type, uint8_t data);
-        void system_access(addr_t physical_addr, access_t access_type);
+        bool system_access(addr_t physical_addr, access_t access_type);
 
         uint8_t try_access(addr_t physical_addr, access_t access_type, uint8_t data);
         add_result_t add_block(addr_t physical_addr, access_t access_type);

@@ -1,27 +1,34 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <map>
+#include <vector>
 #include <string.h>
 #include <inttypes.h>
 #include <iostream>
 #include <pthread.h>
 
+#include "global_types.h"
 #include "system.h"
+
+using namespace std;
 
 System sys;
 pthread_t* cpu_threads;
 pthread_mutex_t simulator_mutex;
+bool verbose;
 
 FILE* open_file(const char *filename);
 int next_line(FILE* trace);
 unsigned int init(FILE* config);
 void* cpu_thread_sim(void* trace);
 void print_usage_and_exit(void);
+map<string, vector<string> > parse_args(int argc, char** argv);
 
 FILE* open_file(const char *filename) {
     FILE* file = fopen(filename, "r");
     if (!file) {
-        std::cerr << "File " << filename << " could not be opened\n";
-        exit(-1);
+        cerr << "File " << filename << " could not be opened\n";
+        print_usage_and_exit();
     }
     return file;
 }
@@ -76,34 +83,55 @@ void* cpu_thread_sim(void* trace) {
 }
 
 void print_usage_and_exit() {
-    std::cout   << "Usage:\n  ./simulator <config file> [-s <trace file> | -p <space-separated list of trace files>]\n"
-                << "   -s : Single trace file for all cores, single thread for sequential accesses to cores\n"
-                << "   -p : One trace file for each core, cores access in parallel\n";
+    cout << "Usage:\n  ./simulator <config file> [-s <trace file> | -p <space-separated list of trace files>]\n"
+            "   -s : Single trace file for all cores, single thread for sequential accesses to cores\n"
+            "   -p : One trace file for each core, cores access in parallel\n";
     exit(-1);
 }
 
-int main(int argc, char **argv) {
-    FILE *config;
-    
+map<string, vector<string> > parse_args(int argc, char** argv) {
     if (argc < 4) {
         print_usage_and_exit();
     }
+    map<string, vector<string> > args;
+    for (int i = 2; i < argc; i++) { // skip first (program name) and second (config file)
+        if (argv[i][0] == '-') {
+            const string key = argv[i];
+            vector<string> values;
+            while (i + 1 < argc && argv[i + 1][0] != '-') {
+                values.push_back(string(argv[i + 1]));
+                i++;
+            }
+            args[key] = values;
+        }
+    }
+    return args;
+}
+
+int main(int argc, char** argv) {
+    FILE *config;
+
+    map<string, vector<string> > args = parse_args(argc, argv);
     
     config = open_file(argv[1]);
     unsigned int num_cpus = init(config);
     pthread_mutex_init(&simulator_mutex, NULL);
 
-    if (strcmp(argv[2], "-p") == 0) {
-        if ((unsigned) (argc - 3) < num_cpus) {
-            std::cout << "Not enough trace files provided for parallel access.\n";
+    if (args.count("-v")) {
+        verbose = true;
+    }
+
+    if (args.count("-p")) {
+        if (args["-p"].size() < num_cpus) {
+            cout << args["-p"].size() << "Not enough trace files provided for parallel access.\n";
             print_usage_and_exit();
         }
-        cpu_threads = (pthread_t*) malloc(sizeof(pthread_t) * num_cpus);
-        
+        cpu_threads = new pthread_t[num_cpus];
+    
 
         // create thread for each cpu
         for (unsigned int i = 0; i < num_cpus; i++) {
-            pthread_create(&cpu_threads[i], NULL, cpu_thread_sim, (void*) open_file(argv[i + 3]));
+            pthread_create(&cpu_threads[i], NULL, cpu_thread_sim, (void*) open_file(&args["-p"][i][0]));
         }
 
         // wait for all threads to finish
@@ -114,10 +142,10 @@ int main(int argc, char **argv) {
         sys.print_stats();
 
         fclose(config);
-        free(cpu_threads);
+        delete cpu_threads;
         pthread_mutex_destroy(&simulator_mutex);
-    } else if (strcmp(argv[2], "-s") == 0) {
-        FILE* input = open_file(argv[3]);
+    } else if (args.count("-s")) {
+        FILE* input = open_file(&args["-s"][0][0]);
         while (next_line(input));
         sys.print_stats();
         fclose(input);
@@ -126,7 +154,7 @@ int main(int argc, char **argv) {
         print_usage_and_exit();
     }
 
-    std::cout << "Simulation Completed\n";
+    cout << "Simulation Completed\n";
 
     return 0;
 }

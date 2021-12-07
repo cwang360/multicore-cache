@@ -14,11 +14,7 @@ void System::init(unsigned int _num_caches, protocol_t _protocol, Cache::config_
     pthread_mutex_init(&bus_mutex, NULL);
 
     bus.message = NONE;
-    bus.data = (uint8_t*) malloc(sizeof(uint8_t) * cache_config.line_size);
-    if (!bus.data) {
-        std::cout << "Could not allocate memory for bus data\n";
-        exit(-1);
-    }
+    bus.data = new uint8_t[cache_config.line_size];
 
     shared_mem = new Memory();
     shared_mem->init(mem_size, cache_config.line_size, &bus);
@@ -31,41 +27,45 @@ void System::init(unsigned int _num_caches, protocol_t _protocol, Cache::config_
 
 uint8_t System::access(unsigned int core, addr_t physical_addr, access_t access_type, uint8_t data){
     pthread_mutex_lock(&bus_mutex);
+    bus.addr = physical_addr;
     uint8_t result_data = caches[core].try_access(physical_addr, access_type, data);
     message_t message = bus.message;
-    bus.message = NONE;
 
     if (message == READ_MISS || message == WRITE_MISS) {
-        unsigned int dirty_cache;
-        bool dirty = false;
-        // check if other caches have dirty copy
+        bool sent_data_from_cache = false;
+        // request data from other caches first.
         for (unsigned int i = 0; i < num_caches; i++) {
             if (i != core) {
-                if (caches[i].check_dirty(physical_addr)) {
-                    dirty_cache = i;
-                    dirty = true;
+                sent_data_from_cache = caches[i].system_access(physical_addr, SEND);
+                if (sent_data_from_cache) {
+                    shared_mem->access(physical_addr, STORE);
+                    break;
                 }
             }
         }
-        if (!dirty) {
+        // If none of the caches has a dirty copy, request data from memory
+        if (!sent_data_from_cache) {
             shared_mem->access(physical_addr, SEND);
-        } else {
-            caches[dirty_cache].system_access(physical_addr, SEND);
-            shared_mem->access(physical_addr, STORE);
         }
+        
+        // Store data into target cache
         data_bus_transactions++;
+        bus.message = NONE;
         caches[core].system_access(physical_addr, STORE);
-        result_data = caches[core].processor_access(physical_addr, access_type, data);
+
+        // If the new block evicts an old block, writeback.
         if (bus.message == WRITEBACK) {
             data_bus_transactions++;
             shared_mem->access(bus.addr, STORE);
         }
         bus.message = NONE;
+
+        result_data = caches[core].processor_access(physical_addr, access_type, data);
     } 
-    if (message == WRITE_MISS || message == INVALIDATE) {
-        // std::cout << "INVALIDATION\n";
+    if (message == INVALIDATE || message == WRITE_MISS) {
         // invalidate others
         invalidations++;
+        if (verbose) std::cout << "    INVALIDATION\n";
         for (unsigned int i = 0; i < num_caches; i++) {
             if (i != core) caches[i].invalidate(physical_addr);
         }
@@ -87,6 +87,6 @@ void System::print_stats(){
 System::~System() {
     delete [] caches;
     delete shared_mem;
-    free(bus.data);
+    delete [] bus.data;
     pthread_mutex_destroy(&bus_mutex);
 }

@@ -100,21 +100,22 @@ uint8_t Cache::processor_access(addr_t physical_addr, access_t access_type, uint
     return result;
 }
 
-void Cache::system_access(addr_t physical_addr, access_t access_type) {
+bool Cache::system_access(addr_t physical_addr, access_t access_type) {
 
     addr_split_t addr = split_address(physical_addr);
 
     if (access_type == SEND) {
         // Find cache block and copy its data to bus
         for (unsigned int way = 0; way < ways; way++) {
-            if (cache[addr.index].blocks[way].tag == addr.tag && cache[addr.index].blocks[way].valid) { // hit
-                cache[addr.index].blocks[way].dirty = 0; // now is shared, and memory will be updated
+            if (cache[addr.index].blocks[way].tag == addr.tag && cache[addr.index].blocks[way].valid && cache[addr.index].blocks[way].dirty) { // hit, will only send if dirty
+                // cache[addr.index].blocks[way].dirty = 0; // now is shared, and memory will be updated
                 // cache[index].blocks[way].state = SHARED;
-                transition_bus(&cache[addr.index].blocks[way], READ_MISS);
+                transition_bus(&cache[addr.index].blocks[way], bus->message); 
                 memcpy(bus->data, cache[addr.index].blocks[way].data, sizeof(uint8_t) * block_size);
+                return true;
             } 
         }
-        return; // Not found; don't do anything
+        return false; // Not found; don't do anything
     }
 
     if (access_type == STORE) {
@@ -136,11 +137,14 @@ void Cache::system_access(addr_t physical_addr, access_t access_type) {
                 stats.writebacks++;
             }
         }
+        
         memcpy(cache[addr.index].blocks[accessed_way].data, bus->data, sizeof(uint8_t) * block_size);
         cache[addr.index].blocks[accessed_way].valid = 1;
         cache[addr.index].blocks[accessed_way].dirty = 0;
         cache[addr.index].blocks[accessed_way].tag = addr.tag;
+        return true;
     }
+    return false;
 }
 
 uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t data) {
@@ -329,7 +333,9 @@ void Cache::transition_bus(cache_block_t* cache_block, message_t bus_message) {
         default:
             break;
     }
-    std::cout << "    Cache block " << cache_block << " state: " << old_state << " -> " << cache_block->state << "\n";
+    if (verbose && old_state != cache_block->state) {
+        std::cout << "    Cache block " << cache_block << " state: " << old_state << " -> " << cache_block->state << "\n";
+    }
 }
 
 void Cache::transition_processor(cache_block_t* cache_block, access_t request) {
@@ -385,7 +391,9 @@ void Cache::transition_processor(cache_block_t* cache_block, access_t request) {
         default:
             break;
     }
-    std::cout << "    Cache block " << cache_block << " state: " << old_state << " -> " << cache_block->state << "\n";
+    if (verbose && old_state != cache_block->state) {
+        std::cout << "    Cache block " << cache_block << " state: " << old_state << " -> " << cache_block->state << "\n";
+    }
 }
 
 void Cache::print_stats() {

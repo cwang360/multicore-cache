@@ -5,11 +5,13 @@ typedef unsigned long long addr_t;		// Data type to hold addresses
 typedef unsigned long long counter_t;	// Data type to hold cache statistic variables
 typedef long long data_t;
 
+extern bool verbose; // global "debug flag" for verbose output 
+
 // Access types
 typedef enum {
     MEMREAD = 0,
-    MEMWRITE = 1,
-    IFETCH = 2,
+    MEMWRITE,
+    IFETCH,
     SEND,       // Data copied to bus
     STORE,      // Data copied from bus, stored to mem or cache
     MARKDIRTY
@@ -18,11 +20,11 @@ typedef enum {
 // Bus messages
 typedef enum {
     NONE = 0, 
-    READ_MISS = 1,
-    WRITE_MISS = 2,
-    INVALIDATE = 3,
-    DATA = 4, 
-    WRITEBACK = 5,
+    READ_MISS,
+    WRITE_MISS,
+    INVALIDATE,
+    DATA, 
+    WRITEBACK,
     SET_EXCLUSIVE,
     SET_SHARED
 } message_t;

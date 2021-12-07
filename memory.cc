@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <cmath>
+#include <iostream>
 
 #include "memory.h"
 
@@ -19,9 +20,11 @@ void Memory::access(addr_t physical_addr, access_t access_type){
     uint8_t* mem_block = mem + physical_addr;
     if (access_type == STORE) {
         memcpy(mem_block, bus->data, sizeof(uint8_t) * block_size);
+        if (verbose) std::cout << "    WRITEBACK TO MEM\n";
         writebacks++;
     } else {
         memcpy(bus->data, mem_block, sizeof(uint8_t) * block_size);
+        if (verbose) std::cout << "    DATA REQ FROM MEM\n";
         data_reqs++;
     }
 }
