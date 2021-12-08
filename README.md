@@ -42,7 +42,7 @@ If using a separate trace file for each core:
 ```
 $ ./simulator <config> -p <space delimited list of trace files>
 ```
-[TODO] Use the `-v` flag for verbose output (see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks)
+Use the `-v` flag for verbose output (see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks)
 ## Config file format
 ```
 <number of cores>, <coherence protocol>

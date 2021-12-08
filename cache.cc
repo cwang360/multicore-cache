@@ -398,8 +398,7 @@ void Cache::transition_processor(cache_block_t* cache_block, access_t request) {
 
 void Cache::print_stats() {
     get_stats();
-    printf( "===================== Single Level Cache Stats =====================\n"
-            "%d-byte %d-way set associative cache with %d-byte lines\n"
+    printf( "%d-byte %d-way set associative cache with %d-byte lines\n"
             "Hit time: %d cycles\n"
             "Miss penalty: %d cycles\n"
             "--------------------------------------------------------------------\n"

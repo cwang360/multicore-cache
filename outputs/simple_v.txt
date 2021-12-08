@@ -1,0 +1,100 @@
+    Cache block 0x13860fd40 state: INVALID -> MODIFIED
+    DATA REQ FROM MEM
+    INVALIDATION
+core0 w 0x6f8bc0 <= 0x19 expected: 0x19
+core0 w 0x6f8bc8 <= 0xb1 expected: 0xb1
+core0 w 0x6f8bd0 <= 0x2f expected: 0x2f
+core0 w 0x6f8bd8 <= 0xff expected: 0xff
+core0 w 0x6f8be0 <= 0x12 expected: 0x12
+core0 w 0x6f8be8 <= 0x7d expected: 0x7d
+core0 w 0x6f8bf0 <= 0x18 expected: 0x18
+core0 r 0x6f8bc0 => 0x19 expected: 0x19
+core0 r 0x6f8bc8 => 0xb1 expected: 0xb1
+core0 r 0x6f8bd0 => 0x2f expected: 0x2f
+core0 r 0x6f8bd8 => 0xff expected: 0xff
+core0 r 0x6f8be0 => 0x12 expected: 0x12
+core0 r 0x6f8be8 => 0x7d expected: 0x7d
+core0 r 0x6f8bf0 => 0x18 expected: 0x18
+    Cache block 0x138612900 state: INVALID -> MODIFIED
+    DATA REQ FROM MEM
+    INVALIDATION
+core0 w 0xd84f78 <= 0x07 expected: 0x07
+core0 w 0xd84f48 <= 0x77 expected: 0x77
+    Cache block 0x13860bba0 state: INVALID -> SHARED
+    DATA REQ FROM MEM
+core0 r 0x790688 => 0x00 expected: 0x00
+    Cache block 0x13861c540 state: INVALID -> MODIFIED
+    Cache block 0x13860fd40 state: MODIFIED -> INVALID
+    WRITEBACK TO MEM
+    INVALIDATION
+core1 w 0x6f8bc0 <= 0xab expected: 0xab
+core1 w 0x6f8bc8 <= 0xb1 expected: 0xb1
+core1 w 0x6f8bd0 <= 0x2f expected: 0x2f
+core1 w 0x6f8bd8 <= 0xff expected: 0xff
+core1 w 0x6f8be0 <= 0x12 expected: 0x12
+core1 w 0x6f8be8 <= 0x7d expected: 0x7d
+core1 w 0x6f8bf0 <= 0x18 expected: 0x18
+    Cache block 0x13860fd40 state: INVALID -> SHARED
+    Cache block 0x13861c540 state: MODIFIED -> SHARED
+    WRITEBACK TO MEM
+core0 r 0x6f8bc0 => 0xab expected: 0xab
+core0 r 0x6f8bc8 => 0xb1 expected: 0xb1
+core0 r 0x6f8bd0 => 0x2f expected: 0x2f
+core0 r 0x6f8bd8 => 0xff expected: 0xff
+core0 r 0x6f8be0 => 0x12 expected: 0x12
+core0 r 0x6f8be8 => 0x7d expected: 0x7d
+core0 r 0x6f8bf0 => 0x18 expected: 0x18
+    Cache block 0x13861f100 state: INVALID -> SHARED
+    Cache block 0x138612900 state: MODIFIED -> SHARED
+    WRITEBACK TO MEM
+core1 r 0xd84f78 => 0x07 expected: 0x07
+core1 r 0xd84f48 => 0x77 expected: 0x77
+    Cache block 0x1386183a0 state: INVALID -> SHARED
+    DATA REQ FROM MEM
+core1 r 0x790688 => 0x00 expected: 0x00
+core0 r 0xd84f78 => 0x07 expected: 0x07
+core0 r 0xd84f48 => 0x77 expected: 0x77
+    Cache block 0x138612900 state: SHARED -> MODIFIED
+    INVALIDATION
+    Cache block 0x13861f100 state: SHARED -> INVALID
+core0 w 0xd84f78 <= 0x05 expected: 0x05
+    Cache block 0x13861f100 state: INVALID -> SHARED
+    Cache block 0x138612900 state: MODIFIED -> SHARED
+    WRITEBACK TO MEM
+core1 r 0xd84f78 => 0x05 expected: 0x05
+
+======================== Core 0 Cache Stats=========================
+32768-byte 8-way set associative cache with 64-byte lines
+Hit time: 3 cycles
+Miss penalty: 200 cycles
+--------------------------------------------------------------------
+Accesses: 27
+Hits: 23
+Misses: 4
+Miss Rate: 14.814815%
+    Instruction miss rate: nan%
+    Data miss rate: 14.814815%
+AMAT: 32.629630 cycles
+Writebacks: 0
+
+
+======================== Core 1 Cache Stats=========================
+32768-byte 8-way set associative cache with 64-byte lines
+Hit time: 3 cycles
+Miss penalty: 200 cycles
+--------------------------------------------------------------------
+Accesses: 11
+Hits: 7
+Misses: 4
+Miss Rate: 36.363636%
+    Instruction miss rate: nan%
+    Data miss rate: 36.363636%
+AMAT: 75.727273 cycles
+Writebacks: 0
+
+========================== System Stats ===========================
+Writebacks: 4
+Data requests from memory: 4
+Invalidations: 4
+Total data transactions through bus: 8
+Simulation Completed

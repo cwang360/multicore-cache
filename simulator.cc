@@ -83,9 +83,11 @@ void* cpu_thread_sim(void* trace) {
 }
 
 void print_usage_and_exit() {
-    cout << "Usage:\n  ./simulator <config file> [-s <trace file> | -p <space-separated list of trace files>]\n"
+    cout << "Usage:\n  ./simulator <config file> {-s <trace file> | -p <trace file>...} [options]\n"
             "   -s : Single trace file for all cores, single thread for sequential accesses to cores\n"
-            "   -p : One trace file for each core, cores access in parallel\n";
+            "   -p : One trace file for each core, cores access in parallel. Must have one trace file listed per core in config\n"
+            "  options:\n"
+            "   -v : Optional, verbose output; see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks\n";
     exit(-1);
 }
 
@@ -123,7 +125,7 @@ int main(int argc, char** argv) {
 
     if (args.count("-p")) {
         if (args["-p"].size() < num_cpus) {
-            cout << args["-p"].size() << "Not enough trace files provided for parallel access.\n";
+            cout << "Not enough trace files provided for parallel access.\n";
             print_usage_and_exit();
         }
         cpu_threads = new pthread_t[num_cpus];

@@ -76,9 +76,10 @@ uint8_t System::access(unsigned int core, addr_t physical_addr, access_t access_
 
 void System::print_stats(){
     for (unsigned int i = 0; i < num_caches; i++) {
+        std::cout << "\n======================== Core " << i << " Cache Stats=========================\n";
         caches[i].print_stats();
     }
-    std::cout << "======================== System Stats =========================\n";
+    std::cout << "========================== System Stats ===========================\n";
     shared_mem->print_stats();
     std::cout << "Invalidations: " << invalidations << "\n";
     std::cout << "Total data transactions through bus: "  << data_bus_transactions << "\n";
