@@ -16,13 +16,14 @@ System sys;
 pthread_t* cpu_threads;
 pthread_mutex_t simulator_mutex;
 bool verbose;
+bool test;
 
 FILE* open_file(const char *filename);
 int next_line(FILE* trace);
 unsigned int init(FILE* config);
 void* cpu_thread_sim(void* trace);
 void print_usage_and_exit(void);
-map<string, vector<string> > parse_args(int argc, char** argv);
+map<char, vector<string> > parse_args(int argc, char** argv);
 
 FILE* open_file(const char *filename) {
     FILE* file = fopen(filename, "r");
@@ -41,20 +42,29 @@ int next_line(FILE* trace) {
         unsigned int core;
         access_t t;
         addr_t address;
-        uint8_t data;
-        fscanf(trace, "%u %d %llx %" SCNx8 "\n", &core, &t, &address, &data);
+        uint8_t data = 0;
+        char line[30];
+        fgets(line , 30, trace);
+        if (test) {
+            sscanf(line, "%u %d %llx %" SCNx8 "\n", &core, &t, &address, &data);
+        } else {
+            sscanf(line, "%u %d %llx ", &core, &t, &address);
+            if (t == MEMWRITE) sscanf(line, "%*u %*d %*llx %" SCNx8 "\n",  &data);
+        }
         pthread_mutex_lock(&simulator_mutex);
         uint8_t accessed_data = sys.access(core, address, t, data);
         if (t == MEMWRITE) {
-            printf("core%u w 0x%.6llx <= 0x%.2hhx expected: 0x%.2hhx", core, address, accessed_data, data);
+            printf("core%u w 0x%.6llx <= 0x%.2hhx", core, address, accessed_data);
         } else {
-            printf("core%u r 0x%.6llx => 0x%.2hhx expected: 0x%.2hhx", core, address, accessed_data, data);
+            printf("core%u r 0x%.6llx => 0x%.2hhx", core, address, accessed_data);
         }
-        if (accessed_data != data) {
-            printf(" ERROR: MISMATCH\n");
-        } else {
-            printf("\n");
+        if (test) {
+            printf(" expected: 0x%.2hhx", data);
+            if (accessed_data != data) {
+                printf(" ERROR: MISMATCH");
+            }
         }
+        printf("\n");
         pthread_mutex_unlock(&simulator_mutex);
     }
     return 1;
@@ -83,28 +93,39 @@ void* cpu_thread_sim(void* trace) {
 }
 
 void print_usage_and_exit() {
-    cout << "Usage:\n  ./simulator <config file> {-s <trace file> | -p <trace file>...} [options]\n"
-            "   -s : Single trace file for all cores, single thread for sequential accesses to cores\n"
-            "   -p : One trace file for each core, cores access in parallel. Must have one trace file listed per core in config\n"
+    cout << "\nUsage:\n  ./simulator <config file> {-s <trace file> | -p <trace file>...} [options]\n\n"
+            "   -s : Single trace file for all cores, single thread for sequential accesses to cores.\n"
+            "   -p : One trace file for each core, cores access in parallel. Must have one trace file listed per core in config.\n\n"
             "  options:\n"
-            "   -v : Optional, verbose output; see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks\n";
+            "   -v : Verbose output; see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks.\n"
+            "   -t : Test mode; requires read trace lines to have expected data. The simulator will compare actual returned data with expected data.\n\n";
+
     exit(-1);
 }
 
-map<string, vector<string> > parse_args(int argc, char** argv) {
+map<char, vector<string> > parse_args(int argc, char** argv) {
     if (argc < 4) {
+        cout << "Not enough arguments provided.\n";
         print_usage_and_exit();
     }
-    map<string, vector<string> > args;
+    map<char, vector<string> > args;
     for (int i = 2; i < argc; i++) { // skip first (program name) and second (config file)
-        if (argv[i][0] == '-') {
-            const string key = argv[i];
-            vector<string> values;
-            while (i + 1 < argc && argv[i + 1][0] != '-') {
-                values.push_back(string(argv[i + 1]));
-                i++;
+        if (argv[i][0] == '-' && argv[i][1] != '\0') {
+            if (argv[i][2] != '\0') { // multiple options grouped together
+                int j = 1;
+                while (argv[i][j] != '\0') {
+                    args[argv[i][j]] = vector<string>();
+                    j++;
+                }
+            } else {
+                const char key = argv[i][1];
+                vector<string> values;
+                while (i + 1 < argc && argv[i + 1][0] != '-') {
+                    values.push_back(string(argv[i + 1]));
+                    i++;
+                }
+                args[key] = values;
             }
-            args[key] = values;
         }
     }
     return args;
@@ -113,18 +134,17 @@ map<string, vector<string> > parse_args(int argc, char** argv) {
 int main(int argc, char** argv) {
     FILE *config;
 
-    map<string, vector<string> > args = parse_args(argc, argv);
+    map<char, vector<string> > args = parse_args(argc, argv);
     
     config = open_file(argv[1]);
     unsigned int num_cpus = init(config);
     pthread_mutex_init(&simulator_mutex, NULL);
 
-    if (args.count("-v")) {
-        verbose = true;
-    }
+    verbose = args.count('v');
+    test = args.count('t');
 
-    if (args.count("-p")) {
-        if (args["-p"].size() < num_cpus) {
+    if (args.count('p')) {
+        if (args['p'].size() < num_cpus) {
             cout << "Not enough trace files provided for parallel access.\n";
             print_usage_and_exit();
         }
@@ -133,7 +153,7 @@ int main(int argc, char** argv) {
 
         // create thread for each cpu
         for (unsigned int i = 0; i < num_cpus; i++) {
-            pthread_create(&cpu_threads[i], NULL, cpu_thread_sim, (void*) open_file(&args["-p"][i][0]));
+            pthread_create(&cpu_threads[i], NULL, cpu_thread_sim, (void*) open_file(&args['p'][i][0]));
         }
 
         // wait for all threads to finish
@@ -146,8 +166,8 @@ int main(int argc, char** argv) {
         fclose(config);
         delete cpu_threads;
         pthread_mutex_destroy(&simulator_mutex);
-    } else if (args.count("-s")) {
-        FILE* input = open_file(&args["-s"][0][0]);
+    } else if (args.count('s')) {
+        FILE* input = open_file(&args['s'][0][0]);
         while (next_line(input));
         sys.print_stats();
         fclose(input);

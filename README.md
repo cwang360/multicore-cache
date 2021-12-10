@@ -32,11 +32,11 @@ Example:
 ```
 $ ./simulator config.txt -s traces/simple.trace
 ```
-If using a separate trace file for each core:
+If using a separate trace file for each core (order of accesses is unpredictable):
 ```
 $ ./simulator <config> -p <space delimited list of trace files>
 ```
-Use the `-v` flag for verbose output (see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks).
+Use the `-v` flag for verbose output (see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks) and/or `-v` for testing  mode.
 ## Config file format
 ```
 <number of cores>, <coherence protocol>
@@ -58,4 +58,5 @@ Each line should be of the following form:
 - instr fetch = 2
 ### Data:
 - Expected value for a read
+    - Required for testing mode, may omit for non-testing mode
 - Value to be stored for a write
