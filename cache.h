@@ -118,7 +118,7 @@ class Cache {
         uint8_t try_access(addr_t physical_addr, access_t access_type, uint8_t data);
         add_result_t add_block(addr_t physical_addr, access_t access_type);
         bool invalidate(addr_t evicted_addr);
-        bool check_dirty(addr_t physical_addr);
+        bool check_valid(addr_t physical_addr);
 
         void print_stats();
         stats_t* get_stats();

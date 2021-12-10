@@ -142,6 +142,7 @@ bool Cache::system_access(addr_t physical_addr, access_t access_type) {
         cache[addr.index].blocks[accessed_way].valid = 1;
         cache[addr.index].blocks[accessed_way].dirty = 0;
         cache[addr.index].blocks[accessed_way].tag = addr.tag;
+        transition_bus(&cache[addr.index].blocks[accessed_way], bus->message);
         return true;
     }
     return false;
@@ -181,7 +182,6 @@ uint8_t Cache::try_access(addr_t physical_addr, access_t access_type, uint8_t da
         stats.misses++;
         if (access_type == IFETCH) stats.instr_misses++;
         if (access_type == MEMWRITE || access_type == MEMREAD) stats.data_misses++;
-
         transition_processor(
             found_empty ? &cache[addr.index].blocks[empty_way] : &cache[addr.index].blocks[cache[addr.index].stack->get_lru()],
             access_type
@@ -262,15 +262,12 @@ bool Cache::invalidate(addr_t evicted_addr) {
     return false;
 }
 
-bool Cache::check_dirty(addr_t physical_addr) {
+bool Cache::check_valid(addr_t physical_addr) {
     addr_split_t addr = split_address(physical_addr);
     
     for (unsigned int way = 0; way < ways; way++) {
         if (cache[addr.index].blocks[way].tag == addr.tag && cache[addr.index].blocks[way].valid) { // found block
-            if (cache[addr.index].blocks[way].dirty) {
-                return true;
-            }
-            return false;
+            return true;
         }
     }
     return false;
@@ -303,6 +300,12 @@ void Cache::transition_bus(cache_block_t* cache_block, message_t bus_message) {
             break;
         case MESI:
             switch (cache_block->state) {
+                case INVALID:
+                    if (bus_message == SET_EXCLUSIVE) {
+                        cache_block->state = EXCLUSIVE;
+                    } else if (bus_message == NONE) {
+                        cache_block->state = SHARED;
+                    }
                 case EXCLUSIVE:
                     if (bus_message == READ_MISS) {
                         cache_block->state = SHARED;
@@ -370,6 +373,7 @@ void Cache::transition_processor(cache_block_t* cache_block, access_t request) {
                         bus->message = WRITE_MISS;
                     } else if (request == MEMREAD) {
                         bus->message = READ_MISS;
+                        // special case: pass handling back to system before changing state.
                         // see if other caches have block to determine whether to move to exclusive or shared state
                     }
                     break;

@@ -30,14 +30,16 @@ uint8_t System::access(unsigned int core, addr_t physical_addr, access_t access_
     bus.addr = physical_addr;
     uint8_t result_data = caches[core].try_access(physical_addr, access_type, data);
     message_t message = bus.message;
-
     if (message == READ_MISS || message == WRITE_MISS) {
-        bool sent_data_from_cache = false;
+        bool sent_data_from_cache = false; // true if dirty copy of data in another cache
+        bool valid_in_other_cache = false; // true if valid copy of data in another cache
         // request data from other caches first.
         for (unsigned int i = 0; i < num_caches; i++) {
             if (i != core) {
                 sent_data_from_cache = caches[i].system_access(physical_addr, SEND);
+                if (!valid_in_other_cache) valid_in_other_cache = caches[i].check_valid(physical_addr);
                 if (sent_data_from_cache) {
+                    // write back to mem while recent data is on bus
                     shared_mem->access(physical_addr, STORE);
                     break;
                 }
@@ -48,9 +50,15 @@ uint8_t System::access(unsigned int core, addr_t physical_addr, access_t access_
             shared_mem->access(physical_addr, SEND);
         }
         
-        // Store data into target cache
-        data_bus_transactions++;
-        bus.message = NONE;
+        // Update bus message
+        if (!valid_in_other_cache && protocol == MESI && message == READ_MISS) {
+            bus.message = SET_EXCLUSIVE;
+        } else {
+            bus.message = NONE;
+        }
+
+        // Tell original requesting processor to store data into its cache
+        data_bus_transactions++;        
         caches[core].system_access(physical_addr, STORE);
 
         // If the new block evicts an old block, writeback.
@@ -69,6 +77,7 @@ uint8_t System::access(unsigned int core, addr_t physical_addr, access_t access_
         for (unsigned int i = 0; i < num_caches; i++) {
             if (i != core) caches[i].invalidate(physical_addr);
         }
+        bus.message = NONE;
     }
     pthread_mutex_unlock(&bus_mutex);
     return result_data;

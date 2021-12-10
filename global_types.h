@@ -40,7 +40,7 @@ typedef struct bus_t {
 // Cache coherence protocols
 typedef enum {
     MSI = 0, 
-    MESI = 1
+    MESI
 } protocol_t;
 
 #endif
