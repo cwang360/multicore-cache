@@ -36,7 +36,7 @@ If using a separate trace file for each core (order of accesses is unpredictable
 ```
 $ ./simulator <config> -p <space delimited list of trace files>
 ```
-Use the `-v` flag for verbose output (see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks) and/or `-v` for testing  mode.
+Use the `-v` flag for verbose output (see when there is a data request from memory, writeback to memory, invalidation, and state changes for cache blocks) and/or `-t` for testing  mode.
 ## Config file format
 ```
 <number of cores>, <coherence protocol>
