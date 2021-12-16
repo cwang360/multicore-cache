@@ -13,11 +13,11 @@ typedef enum {
     SHARED,
     MODIFIED,
     EXCLUSIVE,
-    OWNER
+    OWNED
 } state_t;
 
 inline std::ostream& operator<<(std::ostream& os, const state_t state) {
-    const std::string state_names[] = {"INVALID", "SHARED", "MODIFIED", "EXCLUSIVE", "OWNER"};
+    const std::string state_names[] = {"INVALID", "SHARED", "MODIFIED", "EXCLUSIVE", "OWNED"};
     return os << state_names[state];
 }
 
